@@ -36,6 +36,13 @@ test("站点规则匹配子域名、显式端口、默认端口与相同规则�
   assert.equal(S.effective({ siteRules: [{ domain: "example.com", action: "off" }, { domain: "example.com", action: "on" }] }, "https://example.com").enabled, false);
   for (const name of ["example.com:abc", "example.com:99999", "bad host", "ftp://example.com", "http://u:p@example.com"]) assert.equal(S.parseDomain(name), null, name);
   assert.equal(S.parseDomain("[::1]:8080").port, "8080");
+  for (const value of ["foo*.example.com", "**.example.com", "*"]) assert.equal(S.parseDomain(value), null);
+  assert.equal(S.parseDomain("*.example.com").host, "example.com");
+  assert.equal(S.parseDomain("https://example.com/a:b?q=search*").host, "example.com");
+  for (const value of ["HTTPS://EXAMPLE.COM:443/path?q=font#body", "https://example.com:443/path?q=font#body"]) {
+    assert.equal(S.parseDomain(value).host, "example.com");
+    assert.equal(S.parseDomain(value).port, "443");
+  }
 });
 test("常见正文字体原位替换，宋体与 SimHei 保留，无命中在列表末尾追加", () => {
   assert.equal(S.prepend('Arial, "Microsoft YaHei", sans-serif', { cjkMode: "replace" }), S.prefix + 'Arial,"SF Pro Text", "PingFang UI SC","SF Pro Text", "PingFang UI SC"');

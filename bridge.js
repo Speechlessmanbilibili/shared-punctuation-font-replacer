@@ -7,10 +7,14 @@
   let fontWork = null;
   const send = value => window.postMessage({ channel: CHANNEL, direction: "to-engine", ...value }, "*");
   function address() {
-    let url = location.href;
-    if (!/^(?:https?|file):/.test(url)) {
-      try { url = document.referrer || window.parent.location.href || url; } catch { url = document.referrer || url; }
+    const url = location.href;
+    if (/^(?:https?|file):/.test(url)) return url;
+    // 特殊来源沿用创建页的来源与端口，不依赖可被页面关闭的 referrer。
+    for (const candidate of [location.origin, window.origin, ...Array.from(location.ancestorOrigins || [])]) {
+      if (typeof candidate === "string" && /^(?:https?|file):/.test(candidate)) return candidate;
     }
+    try { if (/^(?:https?|file):/.test(window.parent.location.href)) return window.parent.location.href; } catch {}
+    if (/^(?:https?|file):/.test(document.referrer)) return document.referrer;
     return url;
   }
   // 配置同步送到主世界；浏览器默认字体和 USER 根样式单独补充。
@@ -47,7 +51,7 @@
     }).catch(() => {}).finally(() => { loading = null; });
     return loading;
   }
-  window.addEventListener("message", async event => {
+  async function receiveMessage(event) {
     const message = event.data;
     if (event.source !== window || message?.channel !== CHANNEL || message.direction !== "to-bridge") return;
     if (message.kind === "ready") { if (settings) publish(); else await loadConfig(); return; }
@@ -59,10 +63,15 @@
       return;
     }
     if (message.kind === "read-css" && typeof message.url === "string" && typeof message.id === "string") {
-      try { send({ kind: "css", id: message.id, result: await chrome.runtime.sendMessage({ kind: "read-css", url: message.url }) }); }
+      try { send({ kind: "css", id: message.id, result: await chrome.runtime.sendMessage({ kind: "read-css", url: message.url, encoding: message.encoding }) }); }
       catch { send({ kind: "css", id: message.id, result: { error: "样式表读取失败。" } }); }
     }
-  });
+  }
+  window.addEventListener("message", receiveMessage);
+  new MutationObserver(() => {
+    window.addEventListener("message", receiveMessage);
+    publish(); refreshRoot();
+  }).observe(document, { childList: true });
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area === "local" && changes.settings) setConfig(changes.settings.newValue);
   });

@@ -4,7 +4,7 @@
 
 ## 使用
 
-从 [GitHub Release](https://github.com/Speechlessmanbilibili/shared-punctuation-font-replacer/releases/latest) 下载 `shared-punctuation-font-replacer-v1.0.1.zip`，拖入 Chrome/Edge 扩展管理页，打开设置，填写已安装的本机字体名称并保存。默认字体为 `PingFang UI SC`。固定扩展 ID 为 `leodnciablfoggcacioldiippnfdonmg`，更新包覆盖原扩展并沿用已有设置。
+从 [GitHub Release](https://github.com/Speechlessmanbilibili/shared-punctuation-font-replacer/releases/latest) 下载带版本号的 ZIP，拖入 Chrome/Edge 扩展管理页，打开设置，填写已安装的本机字体名称并保存。默认字体为 `PingFang UI SC`。固定扩展 ID 为 `leodnciablfoggcacioldiippnfdonmg`，更新包覆盖原扩展并沿用已有设置。
 
 默认包括弯引号、省略号、破折号、连接号、间隔号、项目符号、参考符号、章节符号、段落符号和匕首号。角形引号、英文标点及常用符号可另行勾选，也可直接输入额外字符。字符按 Unicode 码位统一处理，中文和西文中的同一个字符使用相同字形。
 
@@ -35,7 +35,13 @@
 
 处理普通样式表、内联字体声明、字体列表变量、媒体条件、状态选择器、动态 CSSOM 写入、脚本创建的 Shadow DOM 与 adopted stylesheets。不可直接读取的跨域 CSS 由后台取得，并在原样式表位置建立副本；副本保留媒体条件，资源地址按来源解析，CSS 导入按层、支持条件及媒体条件展开。读取失败或遇到命名空间时保留原样式表。
 
+跨域 CSS 按文件与响应声明的编码读取，支持中文字体名和中文变量名；导入子表继承父表的编码。样式表重写、分组与关键帧规则增删后同步更新字体声明和变量依赖，保留浏览器原生 CSSOM 的参数行为。
+
+特殊来源的 about:blank/srcdoc/blob/data 框架沿用创建来源的站点规则，保留端口。页面使用 document.open/write 重建文档后，继续应用当前配置并处理后续样式变化。
+
 初次配置时读取四个空控件的浏览器默认字体，补充普通优先级声明，使没有作者字体声明的输入框、按钮等保留默认字体并替换标点。网站只改变颜色、位置、文字或浏览器状态时，不需要重新读取字体。文字内容及选区由网站和浏览器管理。关闭扩展或本站覆盖时，恢复已改写的字体声明。
+
+设置页在配置读取完成后开放编辑，保存期间继续保留新输入的草稿；保存完成后，新草稿仍显示为未保存状态。清空标点字符组后，预览同步清除标点专用字体。
 
 Chrome/Edge 内部页面不支持注入。浏览器是否允许文件页面访问由扩展管理页中的对应选项控制。严格 CSP 下可处理可读字体声明；若同时限制跨域 CSS 副本，则保留该原样式表。页面使用完全由变量组成的 `font` 简写时，CSSOM 可能不提供独立的 `font-family` 声明；此类声明保留原值。安装本机字体后如仍显示字体缺失，可重启浏览器。
 

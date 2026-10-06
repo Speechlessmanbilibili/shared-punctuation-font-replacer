@@ -56,6 +56,7 @@
     { id: "symbols", label: "常用符号", chars: "©®™°±×÷‰‱", enabled: false }
   ]);
   function normalize(value = {}) {
+    if (!value || typeof value !== "object" || Array.isArray(value)) value = {};
     const selected = Array.isArray(value.groups) ? value.groups : GROUPS.filter(x => x.enabled).map(x => x.id);
     let targets = Array.isArray(value.cjkTargets) ? [...new Set(value.cjkTargets.filter(x => typeof x === "string" && x.trim()).slice(0, 300).map(x => x.trim().slice(0, 300)))] : [...DEFAULT_TARGETS];
     if (LEGACY_TARGET_SETS.some(x => x.size === targets.length)) {
@@ -81,10 +82,10 @@
   function parseDomain(value) {
     try {
       const text = value.trim().replace(/^\*\./, "");
-      if (!text || /\s/.test(text) || /:(?:\D|$)/.test(text.replace(/^https?:\/\//, "").replace(/\[[^\]]+\]/, "ipv6"))) return null;
+      const authority = text.replace(/^https?:\/\//i, "").split(/[/?#]/)[0];
+      if (!text || /\s/.test(text) || authority.includes("*") || /:(?:\D|$)/.test(authority.replace(/\[[^\]]+\]/, "ipv6"))) return null;
       const url = new URL(/^[\w-]+:\/\//.test(text) ? text : "https://" + text);
       if (!["http:", "https:"].includes(url.protocol) || url.username || url.password) return null;
-      const authority = text.replace(/^https?:\/\//, "").split(/[/?#]/)[0];
       const port = authority.match(/:(\d+)$/);
       return { host: url.hostname.replace(/\.$/, ""), port: port ? String(Number(port[1])) : "" };
     } catch { return null; }
@@ -195,6 +196,21 @@
     let found = false;
     const result = parts.map((part, i) => {
       const name = familyName(part);
+      if (name === null) {
+        const opening = part.indexOf("(");
+        if (opening >= 0 && decodeCSS(part.slice(0, opening).trim()).toLowerCase() === "var" && part.trimEnd().endsWith(")")) {
+          const closing = part.lastIndexOf(")");
+          const args = familyList(part.slice(opening + 1, closing));
+          if (args.length > 1) {
+            const fallback = args.slice(1).join(",");
+            const replacement = chineseFamilies(fallback, settings, false, preserveSystem);
+            if (replacement !== fallback) {
+              found = true;
+              return part.slice(0, opening + 1) + args[0] + "," + replacement + part.slice(closing);
+            }
+          }
+        }
+      }
       if ((nonSans || preserveSystem) && systemNames.has(name)) return part;
       if (name === selected || targets.has(name)) {
         found = true;

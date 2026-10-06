@@ -2,6 +2,11 @@
   "use strict";
   const $ = id => document.getElementById(id);
   let saved = "";
+  let loaded = false;
+  let saving = false;
+  const form = $("settings");
+  const saveButton = form.querySelector('button[type="submit"]');
+  form.inert = true; saveButton.disabled = true; form.setAttribute("aria-busy", "true");
   let comparing = false;
   const previewFonts = [];
   let previewSerial = 0;
@@ -33,7 +38,10 @@
     previewFonts.length = 0;
     const range = SPF.unicodeRange(settings);
     $("cjk-font").disabled = settings.cjkMode === "off";
+    $("font-status").textContent = range ? "" : "未选择标点字符。";
+    $("font-status").classList.remove("error");
     $("cjk-font-status").textContent = "";
+    $("cjk-font-status").classList.remove("error");
     for (const item of previewStyles) item.node.style.fontFamily = comparing ? item.family : SPF.prepend(item.family, settings);
     for (const [family, source, faceRange, statusId] of [[SPF.FAMILY, settings.font, range, "font-status"]]) {
       if (!faceRange) continue;
@@ -82,8 +90,9 @@
     return domain;
   }
   function changed() {
+    if (!loaded) return;
     $("empty-rules").hidden = Boolean($("rules").children.length);
-    status(JSON.stringify(read()) === saved ? "已保存" : "有未保存的更改");
+    status(saving ? "正在保存……" : JSON.stringify(read()) === saved ? "已保存" : "有未保存的更改");
   }
   $("settings").addEventListener("input", event => { changed(); if (!event.target.closest("#rules")) preview(); });
   $("add-rule").addEventListener("click", () => { addRule().focus(); changed(); });
@@ -94,6 +103,7 @@
   });
   $("settings").addEventListener("submit", async event => {
     event.preventDefault();
+    if (!loaded || saving) return;
     const rules = [...$("rules").children];
     for (const row of rules) {
       const input = row.querySelector(".domain");
@@ -103,8 +113,10 @@
     if (!$("font").value.trim()) { $("font").focus(); status("请填写本机字体名称。", true); return; }
     if (!$("cjk-font").disabled && !$("cjk-font").value.trim()) { $("cjk-font").focus(); status("请填写中文本机字体名称。", true); return; }
     const settings = read();
-    try { await chrome.storage.local.set({ settings }); saved = JSON.stringify(settings); changed(); }
-    catch (error) { status("保存失败：" + error.message, true); }
+    saving = true; saveButton.disabled = true; form.setAttribute("aria-busy", "true"); status("正在保存……");
+    try { await chrome.storage.local.set({ settings }); saved = JSON.stringify(settings); saving = false; changed(); }
+    catch (error) { saving = false; status("保存失败：" + error.message, true); }
+    finally { saveButton.disabled = false; form.setAttribute("aria-busy", "false"); }
   });
   $("rules").addEventListener("input", event => { if (event.target.classList.contains("domain")) event.target.setCustomValidity(""); });
   chrome.storage.local.get("settings").then(({ settings }) => {
@@ -113,8 +125,8 @@
     document.querySelector(`input[name="cjk-mode"][value="${value.cjkMode}"]`).checked = true; $("cjk-font").value = value.cjkFont; $("cjk-targets").value = value.cjkTargets.join("\n");
     for (const input of document.querySelectorAll("[data-group]")) input.checked = value.groups.includes(input.value);
     for (const rule of value.siteRules) addRule(rule);
-    saved = JSON.stringify(read()); changed(); preview();
-  }).catch(error => status("读取设置失败：" + error.message, true));
+    saved = JSON.stringify(read()); loaded = true; form.inert = false; saveButton.disabled = false; form.setAttribute("aria-busy", "false"); changed(); preview();
+  }).catch(error => { form.inert = false; form.setAttribute("aria-busy", "false"); status("读取设置失败：" + error.message, true); });
   // 原生 details 使用实际高度过渡，关闭时保留内容直至动画结束。
   for (const details of document.querySelectorAll("details")) {
     let animation = null;
