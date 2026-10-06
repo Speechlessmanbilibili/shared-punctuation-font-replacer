@@ -400,11 +400,19 @@
   function enqueue(node) {
     if (!active) return;
     jobs.add(node);
-    if (!timer) timer = setTimeout(() => {
-      timer = 0;
-      const batch = [...jobs]; jobs.clear();
-      for (const item of batch) if (item === document || item.isConnected) inspect(item);
-    }, 0);
+    if (!timer) {
+      const current = generation;
+      const flush = () => {
+        if (current !== generation || !active) return;
+        timer = 0;
+        const batch = [...jobs]; jobs.clear();
+        for (const item of batch) if (item === document || item.isConnected) inspect(item);
+        if (!controlFamilies) readControlFamilies();
+      };
+      // 首屏解析期间在绘制前合并处理；已加载页面继续使用普通任务批处理。
+      if (document.readyState === "loading") { timer = -1; queueMicrotask(flush); }
+      else timer = setTimeout(flush, 0);
+    }
   }
   function observeRoot(root) {
     if (roots.has(root)) return;
@@ -477,9 +485,9 @@
     for (const font of registeredFonts) document.fonts.delete(font);
     registeredFonts.length = 0;
   }
-  function configure(settings, font) {
+  function configure(settings) {
     const next = normalize(settings);
-    const signature = JSON.stringify([next.enabled, next.font, next.groups, next.extra, next.cjkMode, next.cjkFont, next.cjkTargets, font]);
+    const signature = JSON.stringify([next.enabled, next.font, next.groups, next.extra, next.cjkMode, next.cjkFont, next.cjkTargets]);
     if (config?.signature === signature) return;
     stop();
     config = { ...next, signature };
@@ -490,10 +498,11 @@
         if (!range) continue;
         const face = new FontFace(family, `local(${cssString(source)})`, { unicodeRange: range, display: "swap", weight: /^PingFang UI (?:SC|TC|HK|MO)$/i.test(source) ? "100 900" : "normal" });
         registeredFonts.push(face); document.fonts.add(face);
+        face.load().catch(() => {});
       }
-      readControlFamilies();
       observeRoot(document);
       for (const [root, state] of roots) if (!state.started) startRoot(root, state);
+      readControlFamilies();
     }
   }
 
@@ -561,13 +570,17 @@
   window.addEventListener("message", event => {
     const message = event.data;
     if (event.source !== window || message?.channel !== CHANNEL || message.direction !== "to-engine") return;
-    if (message.kind === "config") configure(message.settings, message.defaultFont);
+    if (message.kind === "config") configure(message.settings);
     else if (message.kind === "css") {
       const task = pending.get(message.id);
       if (!task) return;
       pending.delete(message.id); clearTimeout(task.timeout);
       task.resolve(message.result || { error: "样式表读取失败。" });
     }
+  });
+  window.addEventListener(CHANNEL + "/config", event => {
+    if (typeof event.detail !== "string") return;
+    try { configure(JSON.parse(event.detail)); } catch {}
   });
   window.postMessage({ channel: CHANNEL, direction: "to-bridge", kind: "ready" }, "*");
 })();

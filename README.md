@@ -4,7 +4,7 @@
 
 ## 使用
 
-从 [GitHub Release](https://github.com/Speechlessmanbilibili/shared-punctuation-font-replacer/releases/latest) 下载 `shared-punctuation-font-replacer-v1.0.0.zip`，拖入 Chrome/Edge 扩展管理页，打开设置，填写已安装的本机字体名称并保存。默认字体为 `PingFang UI SC`。固定扩展 ID 为 `leodnciablfoggcacioldiippnfdonmg`，更新包覆盖原扩展并沿用已有设置。
+从 [GitHub Release](https://github.com/Speechlessmanbilibili/shared-punctuation-font-replacer/releases/latest) 下载 `shared-punctuation-font-replacer-v1.0.1.zip`，拖入 Chrome/Edge 扩展管理页，打开设置，填写已安装的本机字体名称并保存。默认字体为 `PingFang UI SC`。固定扩展 ID 为 `leodnciablfoggcacioldiippnfdonmg`，更新包覆盖原扩展并沿用已有设置。
 
 默认包括弯引号、省略号、破折号、连接号、间隔号、项目符号、参考符号、章节符号、段落符号和匕首号。角形引号、英文标点及常用符号可另行勾选，也可直接输入额外字符。字符按 Unicode 码位统一处理，中文和西文中的同一个字符使用相同字形。
 
@@ -30,6 +30,8 @@
 ## 工作方式
 
 通过浏览器 `FontFace` 接口引用本机字体，使用与 `@font-face` 等价的 `local()` 与 `unicode-range` 限定字符范围。在网站的字体声明中前置这个专用字体，原字体列表、规则位置和优先级继续保留。浏览器完成字符匹配与绘制。根元素没有作者字体声明时，使用浏览器原有标准字体；补充声明以 `USER` 普通优先级注入。
+
+启动时直接传递站点配置，注册并预加载标点专用字体；页面解析期间通过微任务处理新出现的字体声明。浏览器默认字体查询与根元素补充样式独立完成，网站字体声明可以先行替换。
 
 处理普通样式表、内联字体声明、字体列表变量、媒体条件、状态选择器、动态 CSSOM 写入、脚本创建的 Shadow DOM 与 adopted stylesheets。不可直接读取的跨域 CSS 由后台取得，并在原样式表位置建立副本；副本保留媒体条件，资源地址按来源解析，CSS 导入按层、支持条件及媒体条件展开。读取失败或遇到命名空间时保留原样式表。
 

@@ -1,5 +1,7 @@
 "use strict";
 const requests = new Map();
+const fontCache = new Map();
+chrome.fontSettings.onFontChanged.addListener(() => fontCache.clear());
 chrome.action.onClicked.addListener(() => chrome.runtime.openOptionsPage());
 chrome.runtime.onInstalled.addListener(({ reason }) => {
   if (reason === "install") chrome.runtime.openOptionsPage();
@@ -19,10 +21,13 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
     const scripts = { zh: "Hans", "zh-hant": "Hant", ja: "Jpan", ko: "Kore", ar: "Arab", ru: "Cyrl" };
     const lang = String(message.lang || "").toLowerCase();
     const script = /zh-(?:tw|hk|hant)/.test(lang) ? "Hant" : scripts[lang.split("-")[0]] || "Zyyy";
-    chrome.fontSettings.getFont({ genericFamily: "standard", script }, first => {
-      if (first?.fontId) respond({ font: first.fontId });
-      else chrome.fontSettings.getFont({ genericFamily: "standard" }, second => respond({ font: second?.fontId || "Times New Roman" }));
-    });
+    if (!fontCache.has(script)) fontCache.set(script, new Promise(resolve => {
+      chrome.fontSettings.getFont({ genericFamily: "standard", script }, first => {
+        if (first?.fontId) resolve(first.fontId);
+        else chrome.fontSettings.getFont({ genericFamily: "standard" }, second => resolve(second?.fontId || "Times New Roman"));
+      });
+    }));
+    fontCache.get(script).then(font => respond({ font }));
     return true;
   }
   if (message?.kind !== "read-css") return;

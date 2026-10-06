@@ -70,6 +70,27 @@ async function fonts(page, selector) {
 async function splitFonts(page, selector, body, glyphs = 2) {
   assert.deepEqual(await fonts(page, selector), [{ family: body, glyphs: 3 }, { family: "Courier New", glyphs }].sort((a, b) => a.family.localeCompare(b.family)));
 }
+test("真实 MV3 字体处理不等待默认字体查询，首屏字体立即预加载且控件补充不重建", async () => {
+  const worker = context.serviceWorkers()[0];
+  await worker.evaluate(() => {
+    fontCache.clear();
+    globalThis.originalGetFont = chrome.fontSettings.getFont;
+    globalThis.defaultFontFinished = false;
+    chrome.fontSettings.getFont = (details, callback) => {
+      setTimeout(() => originalGetFont(details, value => { defaultFontFinished = true; callback(value); }), 1200);
+    };
+  });
+  try {
+    const page = await pageFor("early-font", '<style>#t{font-family:Arial}</style><p id=t>ABC“”</p>');
+    await configured(page);
+    assert.equal(await worker.evaluate(() => defaultFontFinished), false);
+    await splitFonts(page, "#t", "Arial");
+    const face = await page.evaluate(() => { window.startupFace = [...document.fonts][0]; return startupFace.status; });
+    assert.equal(face, "loaded");
+    await page.waitForFunction(() => getComputedStyle(document.documentElement).fontFamily.includes("Shared Punctuation Font"));
+    assert.equal(await page.evaluate(() => [...document.fonts][0] === startupFace), true);
+  } finally { await worker.evaluate(() => { chrome.fontSettings.getFont = originalGetFont; }); }
+});
 test("真实 MV3 分别保留 Arial 与 Times New Roman 正文，只替换弯引号", async () => {
   const page = await pageFor("families", '<style>#a{font-family:Arial;font-size:32px;line-height:1.5}#b{font-family:"Times New Roman"}</style><p id=a>ABC“”</p><p id=b>ABC“”</p>');
   await configured(page);
@@ -263,7 +284,7 @@ test("设置保存、字符组选项、本站关闭及全局关闭完整恢复�
   await page.locator("#font").fill("Courier New"); await page.locator('[data-group="references"]').uncheck(); await page.locator("#extra").fill("※");
   await page.getByRole("button", { name: "保存设置" }).click();
   await page.waitForFunction(() => document.getElementById("status").textContent === "已保存");
-  const target = pages[0];
+  const target = pages.find(page => page.url().endsWith("/families"));
   await page.locator("#add-rule").click(); await page.locator(".domain").fill("127.0.0.1:" + server.address().port); await page.locator('[data-action="off"]').check();
   await page.getByRole("button", { name: "保存设置" }).click();
   await target.waitForFunction(() => ![...document.fonts].some(x => x.family.includes("Shared Punctuation Font")));
