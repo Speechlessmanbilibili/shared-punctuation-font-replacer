@@ -1,0 +1,11 @@
+{
+  "name": "shared-punctuation-font-replacer",
+  "private": true,
+  "license": "GPL-3.0-or-later",
+  "version": "1.0.0",
+  "scripts": {
+    "pretest": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File ./build-release.ps1",
+    "test": "node --test tests/*.test.cjs"
+  },
+  "devDependencies": { "playwright": "1.62.1" }
+}

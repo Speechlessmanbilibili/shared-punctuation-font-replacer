@@ -1,0 +1,15 @@
+# 开发要求
+
+- 本目录是独立的共用标点字体替换扩展，单独配置、打包和安装。
+- `manifest.json` 的固定 `key` 对应 ID 为 `leodnciablfoggcacioldiippnfdonmg`；改名和发版保留此身份，以覆盖已有安装并保留设置。
+- `shared.js` 集中维护字符组、配置校验、站点匹配和 `unicode-range` 生成；`engine.js` 处理网站字体声明与 CSSOM 更新；`bridge.js` 传递配置与样式表读取请求。
+- 打包脚本将 `shared.js` 与 `engine.js` 合成为主世界入口 `main-runtime.js`；隔离脚本单独加载共有代码，避免浏览器按文件名去重。
+- 前置专用字体时保留原字体列表、声明优先级和规则位置；停用时恢复网站声明。字体选择由浏览器完成。
+- 简体中文正文黑体按名称原位替换；默认名单参考常见 CSS 模板的简中字体栈，鸿蒙只匹配 `HarmonyOS Sans SC` 和 `HarmonyOS_Sans_SC`。目标中文字体前补充 `SF Pro Text`，未命中时在原列表末尾追加这一组合；明确包含宋体、楷体、仿宋等中文字体时跳过末尾追加，字体变量沿依赖图判断。更新默认名单时迁移完整的旧默认集合，保留用户编辑过的名单。
+- 设置页使用中文注释、中国大陆标点与弯引号，代码语法除外；示例域名使用 `example.com`，不使用原生下拉框。
+- 系统无衬线及 Apple 文本样式名称同样原位替换为 `SF Pro Text` 与目标中文字体；明确包含中文宋体、楷体等时保留系统后备项。默认名单与历史完整集合迁移集中维护在 `shared.js`。
+- 每次修改后运行真实 Chromium 回归，验证实际绘制字体、动态样式与设置页；重建版本 ZIP，并校验文件头、根目录、版本及文件内容。
+- 在本目录运行 `powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\build-release.ps1`；安装包自动复制到运行时获取的系统下载目录。
+- ZIP 条目使用 `/`，扩展文件放在根目录；PowerShell 5.1 脚本使用 UTF-8 带 BOM。
+- `CHANGELOG.md` 记录版本功能，日期使用北京时间。发布说明只写具体功能修改。
+- 使用 GPL-3.0-or-later 许可证，版本 ZIP 包含 `LICENSE`。
