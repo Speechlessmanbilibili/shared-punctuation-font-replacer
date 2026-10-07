@@ -2,6 +2,10 @@
 
 根据 Git 提交、版本标签及 GitHub Release 记录整理。版本标题链接到对应 Release，日期采用首次发布时的北京时间；同版本安装包的后续更新另行标注日期。
 
+## [v1.0.3](https://github.com/Speechlessmanbilibili/shared-punctuation-font-replacer/releases/tag/v1.0.3)（2026-10-07）
+
+- 在正文替换字体链的 `PingFang UI SC` 后补充 `PingFang SC`，同步更新设置页预览和本机字体检测。
+
 ## [v1.0.2](https://github.com/Speechlessmanbilibili/shared-punctuation-font-replacer/releases/tag/v1.0.2)（2026-10-06）
 
 - 在样式资源移除后还原字体声明和变量，重新挂入时恢复替换；同步清理导入样式表的依赖。

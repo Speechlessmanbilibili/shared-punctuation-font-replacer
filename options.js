@@ -56,7 +56,8 @@
     }
     if (settings.cjkMode !== "off") {
       try {
-        await new FontFace("Shared Font Availability Check", `local(${SPF.cssString(settings.cjkFont)})`).load();
+        const sources = SPF.chineseFontFamilies(settings.cjkFont).map(font => `local(${SPF.cssString(font)})`).join(", ");
+        await new FontFace("Shared Font Availability Check", sources).load();
         if (serial === previewSerial) { $("cjk-font-status").textContent = "已找到本机字体。"; $("cjk-font-status").classList.remove("error"); }
       } catch {
         if (serial === previewSerial) { $("cjk-font-status").textContent = "未找到这个本机字体，请检查名称或先安装字体。"; $("cjk-font-status").classList.add("error"); }

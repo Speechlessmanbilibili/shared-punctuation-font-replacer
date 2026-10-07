@@ -108,10 +108,10 @@ test("字体变量的多层回退原位替换正文黑体，宋体回退继续�
   const page = await pageFor("fallback", '<style>#a{font-family:var(--missing,"Microsoft YaHei"),Arial}#b{font-family:var(--missing,var(--next,"HarmonyOS Sans SC")),Arial}#c{font-family:var(--missing,SimSun),sans-serif}</style><p id=a>中文</p><p id=b>中文</p><p id=c>中文</p>');
   await page.waitForFunction(() => document.styleSheets[0].cssRules[0].style.fontFamily.includes("Shared Punctuation Font"));
   const names = await page.evaluate(() => [...document.styleSheets[0].cssRules].map(rule => rule.style.fontFamily));
-  assert.equal(names[0], '"Shared Punctuation Font", var(--missing,"SF Pro Text", "PingFang UI SC"),Arial');
-  assert.equal(names[1], '"Shared Punctuation Font", var(--missing,var(--next,"SF Pro Text", "PingFang UI SC")),Arial');
+  assert.equal(names[0], '"Shared Punctuation Font", var(--missing,"SF Pro Text", "PingFang UI SC", "PingFang SC"),Arial');
+  assert.equal(names[1], '"Shared Punctuation Font", var(--missing,var(--next,"SF Pro Text", "PingFang UI SC", "PingFang SC")),Arial');
   assert.equal(names[2], '"Shared Punctuation Font", var(--missing,SimSun),sans-serif');
-  assert.equal(await page.locator("#a").evaluate(node => getComputedStyle(node).fontFamily), '"Shared Punctuation Font", "SF Pro Text", "PingFang UI SC", Arial');
+  assert.equal(await page.locator("#a").evaluate(node => getComputedStyle(node).fontFamily), '"Shared Punctuation Font", "SF Pro Text", "PingFang UI SC", "PingFang SC", Arial');
 });
 
 test("空存储值恢复默认配置，不中断内容脚本", async () => {

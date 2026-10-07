@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "共用标点字体替换",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "为共用标点指定字形，将常见中文正文字体替换为苹方 UI，保留其他字体列表。",
   "minimum_chrome_version": "120",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAvx45/279S8wpZ54VU6AmyVJ45G/fbCy2po+J5T+BmY75olFbaTfZtUsl5kJig63Fytqbnxd6h3XbHbiR4QHmfRX/P1IEWBCAkqgxAjKbS1Pk/SybqeHW8jBcDiSvaqT4ZPiXcHGZh4d+HbFqOS8+JYi23pHiuF5YbkqcNF2FnQLB/lSwIqsjBe6Fl+tHNX5n920spyrZvs+P3FvZxWI/GrXF8NpBSg27Wi161D4VBFWBNAtLKFhupn3/5eLllm8rueUs0l+qRTjNaGRwssV1OcRCTbTsjNRY0307mhKC3JjFAh4MjXv4eD1VUSN40PsPMEvZTyczLv+X5rsGfoqGQwIDAQAB",

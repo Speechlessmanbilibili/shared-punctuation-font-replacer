@@ -45,20 +45,20 @@ test("站点规则匹配子域名、显式端口、默认端口与相同规则�
   }
 });
 test("常见正文字体原位替换，宋体与 SimHei 保留，无命中在列表末尾追加", () => {
-  assert.equal(S.prepend('Arial, "Microsoft YaHei", sans-serif', { cjkMode: "replace" }), S.prefix + 'Arial,"SF Pro Text", "PingFang UI SC","SF Pro Text", "PingFang UI SC"');
+  assert.equal(S.prepend('Arial, "Microsoft YaHei", sans-serif', { cjkMode: "replace" }), S.prefix + 'Arial,"SF Pro Text", "PingFang UI SC", "PingFang SC","SF Pro Text", "PingFang UI SC", "PingFang SC"');
   assert.equal(S.prepend('Arial, SimSun, serif', { cjkMode: "replace" }), S.prefix + 'Arial, SimSun, serif');
-  assert.equal(S.prepend('"A,B", var(--fonts, serif), sans-serif', { cjkMode: "replace" }), S.prefix + '"A,B", var(--fonts, serif),"SF Pro Text", "PingFang UI SC"');
-  assert.equal(S.prepend('Arial', { groups: [], cjkMode: "replace" }), 'Arial, "SF Pro Text", "PingFang UI SC"');
+  assert.equal(S.prepend('"A,B", var(--fonts, serif), sans-serif', { cjkMode: "replace" }), S.prefix + '"A,B", var(--fonts, serif),"SF Pro Text", "PingFang UI SC", "PingFang SC"');
+  assert.equal(S.prepend('Arial', { groups: [], cjkMode: "replace" }), 'Arial, "SF Pro Text", "PingFang UI SC", "PingFang SC"');
   assert.equal(S.chineseFamilies('"Noto Serif SC", "Source Han Serif SC", "宋体", "仿宋", serif', {}), '"Noto Serif SC", "Source Han Serif SC", "宋体", "仿宋", serif');
-  assert.equal(S.chineseFamilies('"Noto Sans JP", "Apple SD Gothic Neo", serif', {}), '"Noto Sans JP", "Apple SD Gothic Neo", serif, "SF Pro Text", "PingFang UI SC"');
-  assert.equal(S.chineseFamilies('"Noto Sans SC", Arial', {}), '"SF Pro Text", "PingFang UI SC", Arial');
-  assert.equal(S.chineseFamilies('"HarmonyOS Sans SC", Arial', {}), '"SF Pro Text", "PingFang UI SC", Arial');
-  assert.equal(S.chineseFamilies('"HarmonyOS_Sans_SC", Arial', {}), '"SF Pro Text", "PingFang UI SC", Arial');
+  assert.equal(S.chineseFamilies('"Noto Sans JP", "Apple SD Gothic Neo", serif', {}), '"Noto Sans JP", "Apple SD Gothic Neo", serif, "SF Pro Text", "PingFang UI SC", "PingFang SC"');
+  assert.equal(S.chineseFamilies('"Noto Sans SC", Arial', {}), '"SF Pro Text", "PingFang UI SC", "PingFang SC", Arial');
+  assert.equal(S.chineseFamilies('"HarmonyOS Sans SC", Arial', {}), '"SF Pro Text", "PingFang UI SC", "PingFang SC", Arial');
+  assert.equal(S.chineseFamilies('"HarmonyOS_Sans_SC", Arial', {}), '"SF Pro Text", "PingFang UI SC", "PingFang SC", Arial');
   for (const name of ["HarmonyOS Sans", "HarmonyOS_Sans", "HarmonyOS Sans TC", "HarmonyOS Sans HK", "HarmonyOS_Sans_TC"]) {
-    assert.equal(S.chineseFamilies('"' + name + '", Arial', {}), '"' + name + '", Arial, "SF Pro Text", "PingFang UI SC"');
+    assert.equal(S.chineseFamilies('"' + name + '", Arial', {}), '"' + name + '", Arial, "SF Pro Text", "PingFang UI SC", "PingFang SC"');
     assert.ok(!S.CHINESE_FONTS.includes(name));
   }
-  assert.equal(S.chineseFamilies('SimHei, "黑体", "华文黑体", Arial', {}), 'SimHei, "黑体", "华文黑体", Arial, "SF Pro Text", "PingFang UI SC"');
+  assert.equal(S.chineseFamilies('SimHei, "黑体", "华文黑体", Arial', {}), 'SimHei, "黑体", "华文黑体", Arial, "SF Pro Text", "PingFang UI SC", "PingFang SC"');
   assert.equal(S.effective({ cjkMode: "replace", siteRules: [{ domain: "example.com", cjkMode: "off" }] }, "https://example.com").cjkMode, "off");
 });
 test("明确的宋体、楷体、仿宋及变量回退阻止追加，正文黑体仍原位替换", () => {
@@ -67,23 +67,25 @@ test("明确的宋体、楷体、仿宋及变量回退阻止追加，正文黑�
     assert.equal(S.chineseFamilies(value, {}), value, family);
     assert.equal(S.prepend(value, {}), S.prefix + value, family);
   }
-  assert.equal(S.chineseFamilies('Arial, "Microsoft YaHei", SimSun', {}), 'Arial,"SF Pro Text", "PingFang UI SC", SimSun');
+  assert.equal(S.chineseFamilies('Arial, "Microsoft YaHei", SimSun', {}), 'Arial,"SF Pro Text", "PingFang UI SC", "PingFang SC", SimSun');
   for (const value of ['Arial, serif', '"Times New Roman", serif', '"Noto Serif", serif', '"My SimSun Theme", serif']) {
-    assert.equal(S.chineseFamilies(value, {}), value + ', "SF Pro Text", "PingFang UI SC"');
+    assert.equal(S.chineseFamilies(value, {}), value + ', "SF Pro Text", "PingFang UI SC", "PingFang SC"');
   }
 });
 test("默认名单限定简中 CSS 字体栈，繁体、港版及额外家族保留", () => {
   const original = '"PingFang TC", "PingFang HK", "Noto Sans TC", "Noto Sans CJK HK", "Microsoft JhengHei", "Source Han Sans TW", MiSans, OPPOSans, Arial';
-  assert.equal(S.chineseFamilies(original, {}), original + ', "SF Pro Text", "PingFang UI SC"');
-  assert.equal(S.chineseFamilies('"WenQuanYi Micro Hei", sans-serif', {}), '"SF Pro Text", "PingFang UI SC","SF Pro Text", "PingFang UI SC"');
+  assert.equal(S.chineseFamilies(original, {}), original + ', "SF Pro Text", "PingFang UI SC", "PingFang SC"');
+  assert.equal(S.chineseFamilies('"WenQuanYi Micro Hei", sans-serif', {}), '"SF Pro Text", "PingFang UI SC", "PingFang SC","SF Pro Text", "PingFang UI SC", "PingFang SC"');
   assert.equal(S.CHINESE_FONTS.length, 14);
 });
 test("SF Pro Text 紧邻目标中文字体，已有相邻项不重复，自选目标字体同样处理", () => {
   const original = 'Arial,"SF Pro Text", "PingFang UI SC", sans-serif';
-  assert.equal(S.chineseFamilies(original, {}), 'Arial,"SF Pro Text","PingFang UI SC","SF Pro Text", "PingFang UI SC"');
-  assert.equal(S.chineseFamilies('Arial,"SF Pro Text"', {}), 'Arial,"SF Pro Text", "PingFang UI SC"');
+  assert.equal(S.chineseFamilies(original, {}), 'Arial,"SF Pro Text","PingFang UI SC", "PingFang SC","SF Pro Text", "PingFang UI SC", "PingFang SC"');
+  assert.equal(S.chineseFamilies('Arial,"SF Pro Text"', {}), 'Arial,"SF Pro Text", "PingFang UI SC", "PingFang SC"');
   assert.equal(S.chineseFamilies('Arial, "Microsoft YaHei", sans-serif', { cjkFont: "Custom Chinese" }), 'Arial,"SF Pro Text", "Custom Chinese","SF Pro Text", "Custom Chinese"');
   assert.equal(S.chineseFamilies('"Microsoft YaHei", sans-serif', { cjkFont: "SF Pro Text" }), '"SF Pro Text","SF Pro Text"');
+  assert.equal(S.chineseFamilies('"Microsoft YaHei", Arial', { cjkFont: "pingfang ui sc" }), '"SF Pro Text", "pingfang ui sc", "PingFang SC", Arial');
+  assert.equal(S.chineseFamilies('"Microsoft YaHei", Arial', { cjkMode: "off" }), '"Microsoft YaHei", Arial');
 });
 test("已保存的旧默认名单迁移，增删过的名单与显式空名单保持原样", () => {
   const old = [
@@ -107,14 +109,14 @@ test("已保存的旧默认名单迁移，增删过的名单与显式空名单�
 });
 test("系统无衬线与 Apple 文本样式原位替换，中文衬线栈保留系统回退", () => {
   for (const name of S.SYSTEM_FONTS) {
-    assert.equal(S.chineseFamilies('Arial, ' + name, {}), 'Arial,"SF Pro Text", "PingFang UI SC"', name);
+    assert.equal(S.chineseFamilies('Arial, ' + name, {}), 'Arial,"SF Pro Text", "PingFang UI SC", "PingFang SC"', name);
     assert.equal(S.chineseFamilies('SimSun, ' + name, {}), 'SimSun, ' + name, name);
     assert.equal(S.prepend('var(--song), ' + name, {}, false), S.prefix + 'var(--song), ' + name, name);
-    assert.equal(S.chineseFamilies(name, {}, false), '"SF Pro Text", "PingFang UI SC"', name);
+    assert.equal(S.chineseFamilies(name, {}, false), '"SF Pro Text", "PingFang UI SC", "PingFang SC"', name);
   }
   assert.equal(S.SYSTEM_FONTS.length, 24);
   assert.ok(!S.DEFAULT_TARGETS.includes("Apple UI System"));
-  assert.equal(S.chineseFamilies('ui-serif, ui-monospace, monospace', {}), 'ui-serif, ui-monospace, monospace, "SF Pro Text", "PingFang UI SC"');
+  assert.equal(S.chineseFamilies('ui-serif, ui-monospace, monospace', {}), 'ui-serif, ui-monospace, monospace, "SF Pro Text", "PingFang UI SC", "PingFang SC"');
 });
 test("变量引用支持中文、CSS 转义、嵌套回退、注释及大小写敏感名称", () => {
   assert.deepEqual([...S.variableReferences('var(--字体, var(--Font))')].sort(), ["--Font", "--字体"].sort());

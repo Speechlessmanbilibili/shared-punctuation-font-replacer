@@ -186,13 +186,13 @@ test("正文名单原位替换，Song/SimHei 保留，未命中在最后追加�
   const page = await pageFor("body-names", '<style>#a{font-family:Arial,"HarmonyOS Sans SC",sans-serif}#b{font-family:SimSun,serif}#c{font-family:SimHei,sans-serif}#d{font-family:"Microsoft YaHei",Arial}#e{font-family:"HarmonyOS Sans",Arial}#f{font-family:"HarmonyOS_Sans",Arial}#g{font-family:"PingFang TC","PingFang HK","Microsoft JhengHei","Noto Sans TC","Source Han Sans TW",Arial}</style><p id=a>ABC“”</p><p id=b>中文 ABC</p><p id=c>ABC“”</p><p id=d>中文</p><p id=e>ABC“”</p><p id=f>ABC“”</p><p id=g>ABC“”</p>');
   await configured(page);
   const names = await page.evaluate(() => [...document.styleSheets].flatMap(x => [...x.cssRules]).filter(x => x.selectorText?.startsWith("#")).map(x => x.style.fontFamily));
-  assert.equal(names[0], '"Shared Punctuation Font", Arial, "SF Pro Text", "PingFang UI SC", "SF Pro Text", "PingFang UI SC"');
+  assert.equal(names[0], '"Shared Punctuation Font", Arial, "SF Pro Text", "PingFang UI SC", "PingFang SC", "SF Pro Text", "PingFang UI SC", "PingFang SC"');
   assert.equal(names[1], '"Shared Punctuation Font", SimSun, serif');
-  assert.equal(names[2], '"Shared Punctuation Font", SimHei, "SF Pro Text", "PingFang UI SC"');
-  assert.equal(names[3], '"Shared Punctuation Font", "SF Pro Text", "PingFang UI SC", Arial');
-  assert.equal(names[4], '"Shared Punctuation Font", "HarmonyOS Sans", Arial, "SF Pro Text", "PingFang UI SC"');
-  assert.equal(names[5], '"Shared Punctuation Font", HarmonyOS_Sans, Arial, "SF Pro Text", "PingFang UI SC"');
-  assert.equal(names[6], '"Shared Punctuation Font", "PingFang TC", "PingFang HK", "Microsoft JhengHei", "Noto Sans TC", "Source Han Sans TW", Arial, "SF Pro Text", "PingFang UI SC"');
+  assert.equal(names[2], '"Shared Punctuation Font", SimHei, "SF Pro Text", "PingFang UI SC", "PingFang SC"');
+  assert.equal(names[3], '"Shared Punctuation Font", "SF Pro Text", "PingFang UI SC", "PingFang SC", Arial');
+  assert.equal(names[4], '"Shared Punctuation Font", "HarmonyOS Sans", Arial, "SF Pro Text", "PingFang UI SC", "PingFang SC"');
+  assert.equal(names[5], '"Shared Punctuation Font", HarmonyOS_Sans, Arial, "SF Pro Text", "PingFang UI SC", "PingFang SC"');
+  assert.equal(names[6], '"Shared Punctuation Font", "PingFang TC", "PingFang HK", "Microsoft JhengHei", "Noto Sans TC", "Source Han Sans TW", Arial, "SF Pro Text", "PingFang UI SC", "PingFang SC"');
   await splitFonts(page, "#a", "Arial");
   assert.deepEqual(await fonts(page, "#d"), chineseReference);
   await page.locator("#d").evaluate(x => { x.textContent = "ABC中文"; });
@@ -203,8 +203,8 @@ test("常见 CSS 模板的简中字体栈原位替换，西文与通用字体保
   const page = await pageFor("template-stacks", '<style>#a{font-family:"Helvetica Neue",Helvetica,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","微软雅黑",Arial,sans-serif}#b{font-family:"PingFang SC","Noto Sans CJK SC","Noto Sans SC","Source Han Sans SC","Microsoft YaHei UI","Microsoft YaHei","Hiragino Sans GB","WenQuanYi Micro Hei",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}</style><p id=a>ABC“”</p><p id=b>中文</p>');
   await configured(page);
   const names = await page.evaluate(() => [...document.styleSheets[0].cssRules].map(x => x.style.fontFamily));
-  assert.equal(names[0], '"Shared Punctuation Font", "Helvetica Neue", Helvetica, ' + Array(4).fill('"SF Pro Text", "PingFang UI SC"').join(", ") + ', Arial, "SF Pro Text", "PingFang UI SC"');
-  assert.equal(names[1], '"Shared Punctuation Font", ' + Array(10).fill('"SF Pro Text", "PingFang UI SC"').join(", ") + ', "Segoe UI", "SF Pro Text", "PingFang UI SC"');
+  assert.equal(names[0], '"Shared Punctuation Font", "Helvetica Neue", Helvetica, ' + Array(4).fill('"SF Pro Text", "PingFang UI SC", "PingFang SC"').join(", ") + ', Arial, "SF Pro Text", "PingFang UI SC", "PingFang SC"');
+  assert.equal(names[1], '"Shared Punctuation Font", ' + Array(10).fill('"SF Pro Text", "PingFang UI SC", "PingFang SC"').join(", ") + ', "Segoe UI", "SF Pro Text", "PingFang UI SC", "PingFang SC"');
   assert.deepEqual(await fonts(page, "#b"), chineseReference);
 });
 test("系统字体与 Apple 文本系列使用 SF Pro Text 和苹方 UI，变量切换保留宋体", async () => {
@@ -216,7 +216,7 @@ test("系统字体与 Apple 文本系列使用 SF Pro Text 和苹方 UI，变量
   const page = await pageFor("system-fonts", `<style>${css}:root{--body:SimSun}#v{font-family:var(--body),sans-serif}</style>${names.map((_, i) => `<p id=f${i}>ABC中文“”</p>`).join("")}<p id=v>中文“”</p>`);
   await configured(page);
   const declarations = await page.evaluate(() => [...document.styleSheets[0].cssRules].slice(0, 24).map(x => ({ family: x.style.fontFamily, size: x.style.fontSize })));
-  for (const declaration of declarations) assert.deepEqual(declaration, { family: '"Shared Punctuation Font", "SF Pro Text", "PingFang UI SC"', size: "28px" });
+  for (const declaration of declarations) assert.deepEqual(declaration, { family: '"Shared Punctuation Font", "SF Pro Text", "PingFang UI SC", "PingFang SC"', size: "28px" });
   assert.deepEqual(await fonts(page, "#f0"), [...westernReference, ...chineseReference, { family: "Courier New", glyphs: 2 }].sort((a, b) => a.family.localeCompare(b.family)));
   const variableFamily = () => page.locator("#v").evaluate(x => getComputedStyle(x).fontFamily);
   await page.waitForFunction(() => !getComputedStyle(document.getElementById("v")).fontFamily.includes("PingFang UI SC"));
@@ -235,12 +235,12 @@ test("宋体、楷体及仿宋跳过追加，CSSOM 与多层字体变量切换�
   assert.equal(names["#b"], '"Shared Punctuation Font", KaiTi, serif');
   assert.equal(names["#v"], '"Shared Punctuation Font", var(--chain),serif');
   assert.equal(names["#loop"], '"Shared Punctuation Font", var(--loop-a),serif');
-  assert.equal(names["#mixed"], '"Shared Punctuation Font", Arial, "SF Pro Text", "PingFang UI SC", SimSun');
+  assert.equal(names["#mixed"], '"Shared Punctuation Font", Arial, "SF Pro Text", "PingFang UI SC", "PingFang SC", SimSun');
   assert.equal(await page.locator("#inline").evaluate(x => x.style.fontFamily), '"Shared Punctuation Font", FangSong, serif');
   assert.equal(await page.locator("#inline").evaluate(x => x.style.getPropertyPriority("font-family")), "important");
   assert.deepEqual(await fonts(page, "#a"), [{ family: "Courier New", glyphs: 2 }, { family: "SimSun", glyphs: 2 }]);
   await page.evaluate(() => document.getElementById("inline").style.setProperty("font-family", "Arial, sans-serif", "important"));
-  assert.equal(await page.locator("#inline").evaluate(x => x.style.fontFamily), '"Shared Punctuation Font", Arial, "SF Pro Text", "PingFang UI SC"');
+  assert.equal(await page.locator("#inline").evaluate(x => x.style.fontFamily), '"Shared Punctuation Font", Arial, "SF Pro Text", "PingFang UI SC", "PingFang SC"');
   await page.evaluate(() => document.getElementById("inline").style.setProperty("font-family", "KaiTi, serif", "important"));
   assert.equal(await page.locator("#inline").evaluate(x => x.style.fontFamily), '"Shared Punctuation Font", KaiTi, serif');
   for (const [font, appended] of [["Arial", true], ["KaiTi", false], ['"Microsoft YaHei"', true], ["SimSun", false]]) {

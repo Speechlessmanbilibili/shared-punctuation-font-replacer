@@ -184,13 +184,16 @@
     }
     return false;
   }
+  function chineseFontFamilies(font) {
+    return font.toLowerCase() === "pingfang ui sc" ? [font, "PingFang SC"] : [font];
+  }
   function chineseFamilies(value, options, append = true, preserveSystem = false) {
     const settings = normalize(options);
     if (settings.cjkMode === "off") return value;
     const targets = new Set(settings.cjkTargets.map(x => x.toLowerCase()));
     const selected = settings.cjkFont.toLowerCase();
     const parts = familyList(value);
-    const font = cssString(settings.cjkFont);
+    const font = chineseFontFamilies(settings.cjkFont).map(cssString).join(", ");
     const group = selected === "sf pro text" ? font : cssString("SF Pro Text") + ", " + font;
     const nonSans = hasChineseNonSans(value);
     let found = false;
@@ -269,5 +272,5 @@
     const head = unicodeRange(settings) ? prefix : "";
     return head + chineseFamilies(value, settings, append, !append);
   }
-  globalThis.SPF = Object.freeze({ FAMILY, CHINESE_FONTS, SYSTEM_FONTS, DEFAULT_TARGETS, CHANNEL, GROUPS, normalize, parseDomain, effective, characters, unicodeRange, cssString, fontCSS, prepend, prefix, familyList, familyName, hasChineseNonSans, chineseFamilies, variableReferences, hasFonts });
+  globalThis.SPF = Object.freeze({ FAMILY, CHINESE_FONTS, SYSTEM_FONTS, DEFAULT_TARGETS, CHANNEL, GROUPS, normalize, parseDomain, effective, characters, unicodeRange, cssString, fontCSS, prepend, prefix, familyList, familyName, hasChineseNonSans, chineseFontFamilies, chineseFamilies, variableReferences, hasFonts });
 })();

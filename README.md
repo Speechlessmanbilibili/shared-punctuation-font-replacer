@@ -10,7 +10,7 @@
 
 站点规则支持跟随全局、开启、关闭及单独的标点字体。域名同时匹配其子域名，更具体的域名优先；端口规则只匹配指定端口。例子使用 `example.com`。
 
-简体中文正文黑体处理默认开启，目标字体为 `PingFang UI SC`。目标中文字体前补充 `SF Pro Text`，命中的名称原位替换为这一组合，没有命中时在原字体列表末尾追加。字体栈明确包含宋体、楷体、仿宋等中文字体时，跳过末尾追加；支持中英文名称、CSS 转义与字体变量依赖。默认名单在设置页可编辑，此功能也可按站点关闭。
+简体中文正文黑体处理默认开启，目标字体为 `PingFang UI SC`。目标中文字体前补充 `SF Pro Text`；选择 `PingFang UI SC` 时，其后补充 `PingFang SC`。命中的名称原位替换为这一组合，没有命中时在原字体列表末尾追加。字体栈明确包含宋体、楷体、仿宋等中文字体时，跳过末尾追加；支持中英文名称、CSS 转义与字体变量依赖。默认名单在设置页可编辑，此功能也可按站点关闭。
 
 默认名单包括 14 个简中正文黑体名称和 24 个系统无衬线/Apple 文本样式名称。简中名单参考 [Element Plus](https://github.com/element-plus/element-plus/blob/dev/packages/theme-chalk/src/common/var.scss) 和 [typo.css](https://github.com/sofish/typo.css/blob/master/typo.css) 的字体栈，并加入鸿蒙 SC：
 
@@ -25,7 +25,7 @@
 
 保存过旧默认名单时自动更新为上述集合，用户编辑过的名单保留。
 
-例如，`Arial, sans-serif` 改为 `Arial, "SF Pro Text", "PingFang UI SC"`；`-apple-system-body` 改为 `"SF Pro Text", "PingFang UI SC"`；`Arial, SimSun, sans-serif` 保留原列表。明确包含宋体、楷体等中文字体时，保留系统后备项；指定的简中正文黑体仍原位替换。字体栈前面已有的西文字体仍优先，标点专用字体另行前置。使用字体列表变量时，沿变量引用替换目标名称，并根据变量中的宋体、楷体等取值更新后备判断；保留变量表达式与原优先级。
+例如，`Arial, sans-serif` 改为 `Arial, "SF Pro Text", "PingFang UI SC", "PingFang SC"`；`-apple-system-body` 改为 `"SF Pro Text", "PingFang UI SC", "PingFang SC"`；`Arial, SimSun, sans-serif` 保留原列表。明确包含宋体、楷体等中文字体时，保留系统后备项；指定的简中正文黑体仍原位替换。字体栈前面已有的西文字体仍优先，标点专用字体另行前置。使用字体列表变量时，沿变量引用替换目标名称，并根据变量中的宋体、楷体等取值更新后备判断；保留变量表达式与原优先级。
 
 ## 工作方式
 
