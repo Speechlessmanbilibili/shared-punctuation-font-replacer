@@ -2,6 +2,16 @@
 
 根据 Git 提交、版本标签及 GitHub Release 记录整理。版本标题链接到对应 Release，日期采用首次发布时的北京时间；同版本安装包的后续更新另行标注日期。
 
+## [v1.1.0](https://github.com/Speechlessmanbilibili/shared-punctuation-font-replacer/releases/tag/v1.1.0)（2026-10-08）
+
+- 添加独立的宋体与楷体替换开关，分别设置目标字体列表，默认关闭，按填写顺序原位替换。
+- 支持在标点、中文正文及本站标点字体输入框中填写多个字体，按填写顺序回退，识别英文和中文逗号以及带引号的字体名。
+- 原位替换 `宋体`/`SimSun` 与常见简中楷体名称，处理 CSS 变量、嵌套 `var()` 回退及动态声明，关闭后恢复网站最终字体与 `!important` 优先级。
+- 分别注册多个标点字体，保留缺字回退、静态字体合成粗体与苹方 UI 变量字重。
+- 补充本机字体的 `Regular` 名称回退，支持通过 `SF Pro Text` 家族名加载标点字形。
+- 添加宋体、楷体预览与字体列表检测，站点关闭中文替换时同时停用三类中文字体替换。
+- 结合浏览器字体目录检测正文家族名称，名称未命中时提示相近的已安装完整名称，分别显示标点字形加载结果。
+
 ## [v1.0.3](https://github.com/Speechlessmanbilibili/shared-punctuation-font-replacer/releases/tag/v1.0.3)（2026-10-07）
 
 - 在正文替换字体链的 `PingFang UI SC` 后补充 `PingFang SC`，同步更新设置页预览和本机字体检测。

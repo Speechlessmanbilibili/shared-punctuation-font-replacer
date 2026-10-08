@@ -43,6 +43,7 @@ button:hover { background: color-mix(in srgb, var(--accent) 7%, var(--surface));
 .preview p { line-height: 1.8; margin: 14px 0; }
 .preview-sans { font-family: Arial, "Microsoft YaHei", sans-serif; }
 .preview-serif { font-family: "Times New Roman", SimSun, serif; }
+.preview-kai { font-family: KaiTi, serif; }
 .preview-mono { font-family: "Courier New", monospace; font-size: 19px; }
 summary { cursor: pointer; font-size: 13px; color: var(--muted); padding: 20px 0 0; }
 .details-body { overflow: hidden; font-size: 13px; }
@@ -56,7 +57,7 @@ code { overflow-wrap: anywhere; font-size: 12px; }
 .remove { color: #c53d45; flex-shrink: 0; }
 footer { position: sticky; bottom: 14px; display: flex; justify-content: space-between; align-items: center; gap: 20px; padding: 16px 20px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 4px 22px #0001; }
 #status { color: var(--muted); font-size: 13px; line-height: 1.6; }
-#status.error, #font-status.error, #cjk-font-status.error { color: #c53d45; }
+#status.error, .help.error { color: #c53d45; }
 @media (max-width: 620px) {
   main { margin: 26px auto; padding: 0 14px 28px; }
   .card { padding: 20px; }

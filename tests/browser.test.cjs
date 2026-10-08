@@ -296,4 +296,119 @@ test("设置保存、字符组选项、本站关闭及全局关闭完整恢复�
   await page.locator("#enabled").check(); await page.getByRole("button", { name: "保存设置" }).click();
   await configured(target); await splitFonts(target, "#a", "Arial");
 });
+test("多字体标点按输入顺序选字形，缺失字体和缺字继续尝试后备项", async () => {
+  const worker = context.serviceWorkers()[0];
+  const saved = await worker.evaluate(async () => (await chrome.storage.local.get("settings")).settings);
+  try {
+    await worker.evaluate(async saved => chrome.storage.local.set({ settings: { ...saved, enabled: true, cjkMode: "off", replaceSong: false, replaceKai: false, siteRules: [], font: "Missing Shared Font, Courier New, Arial", groups: ["quotes"], extra: "" } }), saved);
+    const page = await pageFor("multiple-punctuation", '<style>p{font-family:Arial}</style><p id=t>ABC“”</p>');
+    await configured(page);
+    await splitFonts(page, "#t", "Arial");
+    await worker.evaluate(async () => { const { settings } = await chrome.storage.local.get("settings"); await chrome.storage.local.set({ settings: { ...settings, font: "Arial, Courier New" } }); });
+    await page.waitForFunction(() => [...document.fonts].length === 2 && [...document.fonts].every(font => font.status === "loaded"));
+    assert.deepEqual(await fonts(page, "#t"), [{ family: "Arial", glyphs: 5 }]);
+    await worker.evaluate(async () => { const { settings } = await chrome.storage.local.get("settings"); await chrome.storage.local.set({ settings: { ...settings, font: "SF Pro Text, PingFang UI SC", groups: [], extra: "A中" } }); });
+    await page.locator("#t").evaluate(node => { node.innerHTML = '<span id=latin>A</span><span id=chinese>中</span><span id=untouched>B</span>'; });
+    await page.waitForFunction(() => [...document.fonts].length === 2 && [...document.fonts].every(font => font.status === "loaded"));
+    assert.deepEqual(await fonts(page, "#latin"), westernReference.map(font => ({ ...font, glyphs: 1 })));
+    assert.deepEqual(await fonts(page, "#chinese"), chineseReference.map(font => ({ ...font, glyphs: 1 })));
+    assert.deepEqual(await fonts(page, "#untouched"), [{ family: "Arial", glyphs: 1 }]);
+  } finally { await worker.evaluate(settings => chrome.storage.local.set({ settings }), saved); }
+});
+test("多标点字体保留静态字体合成粗体和苹方 UI 变量字重", async () => {
+  const worker = context.serviceWorkers()[0];
+  const saved = await worker.evaluate(async () => (await chrome.storage.local.get("settings")).settings);
+  try {
+    await worker.evaluate(async saved => chrome.storage.local.set({ settings: { ...saved, enabled: true, cjkMode: "off", replaceSong: false, replaceKai: false, siteRules: [], font: "Courier New, Arial", groups: ["quotes"], extra: "" } }), saved);
+    const page = await pageFor("punctuation-weights", '<p id=t style="font-family:Arial">“”</p>');
+    await configured(page);
+    async function raster(reference, weightRange) {
+      return page.evaluate(async ({ reference, weightRange }) => {
+        const baseline = new FontFace("Weight Reference", `local("${reference}")`, { weight: weightRange, unicodeRange: "U+201C-201D" });
+        await baseline.load(); document.fonts.add(baseline);
+        const actual = getComputedStyle(document.getElementById("t")).fontFamily;
+        const canvas = document.createElement("canvas"); canvas.width = 256; canvas.height = 128;
+        const context = canvas.getContext("2d");
+        const hash = (family, weight) => {
+          context.clearRect(0, 0, canvas.width, canvas.height);
+          context.font = `${weight} 64px ${family}`; context.fillText("“”", 10, 90);
+          return [...context.getImageData(0, 0, canvas.width, canvas.height).data].reduce((n, x) => (n * 31 + x) >>> 0, 0);
+        };
+        const result = [400, 500, 700].map(weight => ({ weight, actual: hash(actual, weight), expected: hash('"Weight Reference"', weight) }));
+        document.fonts.delete(baseline);
+        return result;
+      }, { reference, weightRange });
+    }
+    const staticWeights = await raster("Courier New", "normal");
+    for (const sample of staticWeights) assert.equal(sample.actual, sample.expected, `静态字重 ${sample.weight}`);
+    assert.notEqual(staticWeights[0].actual, staticWeights[2].actual);
+    await worker.evaluate(async () => { const { settings } = await chrome.storage.local.get("settings"); await chrome.storage.local.set({ settings: { ...settings, font: "PingFang UI SC, Arial" } }); });
+    await page.waitForFunction(() => [...document.fonts].length === 2 && [...document.fonts].every(face => face.status === "loaded"));
+    const variableWeights = await raster("PingFang UI SC", "100 900");
+    for (const sample of variableWeights) assert.equal(sample.actual, sample.expected, `变量字重 ${sample.weight}`);
+    assert.notEqual(variableWeights[0].actual, variableWeights[1].actual);
+  } finally { await worker.evaluate(settings => chrome.storage.local.set({ settings }), saved); }
+});
+test("仅启用宋体和楷体时，变量、嵌套回退与开关更新保留最终网站声明", async () => {
+  const worker = context.serviceWorkers()[0];
+  const saved = await worker.evaluate(async () => (await chrome.storage.local.get("settings")).settings);
+  try {
+    await worker.evaluate(async saved => chrome.storage.local.set({ settings: { ...saved, enabled: true, siteRules: [], groups: [], extra: "", cjkMode: "off", replaceSong: true, songFont: "Times New Roman, SimSun", replaceKai: true, kaiFont: "Courier New, KaiTi" } }), saved);
+    const page = await pageFor("song-kai", '<style>:root{--song:SimSun;--kai:KaiTi;--chain:var(--song)}#song{font-family:Arial,var(--chain),serif!important}#kai{font-family:var(--kai),serif}#fallback{font-family:var(--missing,var(--next,SimSun)),serif}#fang{font-family:FangSong,serif}</style><p id=song>中文</p><p id=kai>中文</p><p id=fallback>中文</p><p id=fang>中文</p>');
+    await page.waitForFunction(() => document.styleSheets[0].cssRules[0].style.getPropertyValue("--song").includes("Times New Roman"));
+    const rules = () => page.evaluate(() => [...document.styleSheets[0].cssRules].map(rule => rule.style.cssText));
+    assert.equal(await page.evaluate(() => document.styleSheets[0].cssRules[0].style.getPropertyValue("--song")), '"Times New Roman", "SimSun"');
+    assert.equal(await page.evaluate(() => document.styleSheets[0].cssRules[0].style.getPropertyValue("--kai")), '"Courier New", "KaiTi"');
+    assert.ok((await rules())[3].includes('var(--missing,var(--next,"Times New Roman", "SimSun"))'));
+    assert.equal(await page.locator("#fang").evaluate(node => getComputedStyle(node).fontFamily), 'FangSong, serif');
+    await worker.evaluate(async () => { const { settings } = await chrome.storage.local.get("settings"); await chrome.storage.local.set({ settings: { ...settings, replaceKai: false } }); });
+    await page.waitForFunction(() => document.styleSheets[0].cssRules[0].style.getPropertyValue("--kai") === "KaiTi");
+    assert.ok((await rules())[0].includes('"Times New Roman"'));
+    await page.evaluate(() => document.styleSheets[0].cssRules[0].style.setProperty("--song", "KaiTi", "important"));
+    await page.waitForFunction(() => document.styleSheets[0].cssRules[0].style.getPropertyValue("--song") === "KaiTi");
+    await worker.evaluate(async () => { const { settings } = await chrome.storage.local.get("settings"); await chrome.storage.local.set({ settings: { ...settings, replaceSong: false } }); });
+    await page.waitForFunction(() => document.styleSheets[0].cssRules[3].style.fontFamily === "var(--missing,var(--next,SimSun)),serif");
+    assert.equal(await page.evaluate(() => document.styleSheets[0].cssRules[0].style.getPropertyValue("--song")), "KaiTi");
+    assert.equal(await page.evaluate(() => document.styleSheets[0].cssRules[0].style.getPropertyPriority("--song")), "important");
+    assert.equal(await page.evaluate(() => document.styleSheets[0].cssRules[1].style.getPropertyPriority("font-family")), "important");
+  } finally { await worker.evaluate(settings => chrome.storage.local.set({ settings }), saved); }
+});
+test("宋体替换仅处理宋体与 SimSun，其他宋体及动态变量保留网站字体", async () => {
+  const worker = context.serviceWorkers()[0];
+  const saved = await worker.evaluate(async () => (await chrome.storage.local.get("settings")).settings);
+  const preserved = ["NSimSun", "STSong", "Songti SC", "新宋体", "华文宋体", "宋体-简", "Noto Serif SC", "Noto Serif CJK SC", "Source Han Serif SC", "思源宋体", "Songti TC"];
+  try {
+    await worker.evaluate(async saved => chrome.storage.local.set({ settings: { ...saved, enabled: true, siteRules: [], groups: [], extra: "", cjkMode: "off", replaceSong: true, songFont: "PingFang UI SC, PingFang SC", replaceKai: false } }), saved);
+    const page = await pageFor("exact-simsun", '<style>:root{--font:SimSun}#variable{font-family:var(--font),serif}#literal{font-family:"宋体",serif}</style><p id=variable>中文</p><p id=literal>中文</p>' + preserved.map((family, i) => `<p id=keep-${i} style='font-family:"${family}",sans-serif'>中文</p>`).join(""));
+    await page.waitForFunction(() => getComputedStyle(document.getElementById("variable")).fontFamily.includes("PingFang UI SC"));
+    assert.deepEqual(await fonts(page, "#variable"), chineseReference);
+    assert.deepEqual(await fonts(page, "#literal"), chineseReference);
+    for (const mode of ["off", "replace"]) {
+      await worker.evaluate(async cjkMode => { const { settings } = await chrome.storage.local.get("settings"); await chrome.storage.local.set({ settings: { ...settings, cjkMode } }); }, mode);
+      await page.waitForFunction(() => getComputedStyle(document.getElementById("variable")).fontFamily.includes("PingFang UI SC"));
+      assert.deepEqual(await page.evaluate(() => [...document.querySelectorAll('[id^="keep-"]')].map(node => SPF.familyList(getComputedStyle(node).fontFamily).map(SPF.familyName))), preserved.map(family => [family.toLowerCase(), "sans-serif"]));
+    }
+    await page.evaluate(() => document.documentElement.style.setProperty("--font", '"Songti SC"'));
+    await page.waitForFunction(() => getComputedStyle(document.getElementById("variable")).fontFamily === '"Songti SC", serif');
+    await page.evaluate(() => document.documentElement.style.setProperty("--font", '"宋体"'));
+    await page.waitForFunction(() => getComputedStyle(document.getElementById("variable")).fontFamily.includes("PingFang UI SC"));
+    assert.deepEqual(await fonts(page, "#variable"), chineseReference);
+  } finally { await worker.evaluate(settings => chrome.storage.local.set({ settings }), saved); }
+});
+test("真实设置页提示方正新书宋的完整名称，并用所填字体绘制宋体预览", async () => {
+  const page = await context.newPage();
+  try {
+    await page.goto(`chrome-extension://${extensionId}/options.html`);
+    await page.waitForFunction(() => document.getElementById("status").textContent === "已保存");
+    await page.locator("#replace-song").check();
+    await page.locator("#song-font").fill("方正新书宋");
+    await page.waitForFunction(() => { const message = document.getElementById("song-font-status").textContent; return message.includes("方正新书宋_GBK") && message.includes("方正新书宋简体"); });
+    await page.locator("#song-font").fill("方正新书宋_GBK");
+    await page.waitForFunction(() => document.getElementById("song-font-status").textContent === "已找到本机字体。");
+    assert.equal(await page.locator("#song-font-status").evaluate(node => node.classList.contains("error")), false);
+    assert.deepEqual(await page.locator(".preview-serif").evaluate(node => SPF.familyList(getComputedStyle(node).fontFamily).map(SPF.familyName)), ["shared punctuation font", "times new roman", "方正新书宋_gbk", "serif"]);
+    await page.locator(".preview-serif").screenshot();
+    assert.ok((await fonts(page, ".preview-serif")).some(font => font.family === "FZNewShuSong-Z10" && font.glyphs > 0));
+  } finally { await page.close(); }
+});
 test("页面没有扩展运行错误", () => { assert.deepEqual(errors, []); });

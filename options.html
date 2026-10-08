@@ -14,22 +14,36 @@
     <form id="settings">
       <section class="card">
         <div class="section-heading"><h2>标点字体</h2><label class="toggle"><input type="checkbox" id="enabled" checked><span>全局开启</span></label></div>
-        <label for="font">本机字体名称</label>
-        <input id="font" autocomplete="off" spellcheck="false" value="PingFang UI SC" placeholder="例如：PingFang UI SC" required>
-        <p class="help">填写字体的本机名称。网站原来的字体列表会保留在专用字体之后。</p>
+        <label for="font">本机字体列表</label>
+        <input id="font" autocomplete="off" spellcheck="false" value="PingFang UI SC" placeholder="例如：PingFang UI SC, PingFang SC" maxlength="4000" required>
+        <p class="help">多个字体用英文或中文逗号分隔，按填写顺序选择字形；名称本身含逗号时用引号包住。网站原来的字体列表保留在专用字体之后。</p>
         <p id="font-status" class="help" aria-live="polite"></p>
       </section>
       <section class="card">
-        <h2>简体中文正文字体</h2>
+        <h2>简体中文正文黑体</h2>
         <div class="mode-options">
-          <label><input type="radio" name="cjk-mode" value="off">沿用网站字体</label>
-          <label><input type="radio" name="cjk-mode" value="replace" checked>替换正文/补充后备字体</label>
+          <label><input type="radio" name="cjk-mode" value="off">保留网站黑体</label>
+          <label><input type="radio" name="cjk-mode" value="replace" checked>替换黑体/补充后备字体</label>
         </div>
-        <label for="cjk-font">中文本机字体名称</label>
-        <input id="cjk-font" autocomplete="off" spellcheck="false" value="PingFang UI SC">
-        <p class="help">默认覆盖常见简中正文黑体，以及 system-ui、sans-serif、-apple-system-body 等系统字体。目标中文字体前补充 SF Pro Text；选择 PingFang UI SC 时，其后补充 PingFang SC。原位替换或在末尾追加。明确包含宋体、楷体、仿宋等字体时，保留系统后备字体并跳过末尾追加。</p>
+        <label for="cjk-font">黑体替换字体列表</label>
+        <input id="cjk-font" autocomplete="off" spellcheck="false" value="PingFang UI SC" placeholder="例如：PingFang UI SC, PingFang SC" maxlength="4000">
+        <p class="help">多个字体用逗号分隔。默认覆盖常见简中正文黑体，以及 system-ui、sans-serif、-apple-system-body 等系统字体。替换字体前补充 SF Pro Text；只填写 PingFang UI SC 时，其后自动补充 PingFang SC。明确包含宋体、楷体、仿宋等字体时，保留系统后备字体并跳过末尾追加。</p>
         <p id="cjk-font-status" class="help" aria-live="polite"></p>
         <details><summary>要替换的正文与系统字体名单</summary><div class="details-body"><label for="cjk-targets">每行一个字体名称</label><textarea id="cjk-targets" rows="8" spellcheck="false"></textarea></div></details>
+      </section>
+      <section class="card">
+        <div class="section-heading"><h2>宋体替换</h2><label class="toggle"><input type="checkbox" id="replace-song"><span>启用</span></label></div>
+        <label for="song-font">宋体替换字体列表</label>
+        <input id="song-font" autocomplete="off" spellcheck="false" value="Songti SC" placeholder="例如：Songti SC, SimSun" maxlength="4000">
+        <p class="help">开启后，只原位替换“宋体”（SimSun）。多个字体用逗号分隔。</p>
+        <p id="song-font-status" class="help" aria-live="polite"></p>
+      </section>
+      <section class="card">
+        <div class="section-heading"><h2>楷体替换</h2><label class="toggle"><input type="checkbox" id="replace-kai"><span>启用</span></label></div>
+        <label for="kai-font">楷体替换字体列表</label>
+        <input id="kai-font" autocomplete="off" spellcheck="false" value="Kaiti SC" placeholder="例如：Kaiti SC, KaiTi" maxlength="4000">
+        <p class="help">开启后，原位替换楷体、楷体 GB2312 和华文楷体。多个字体用逗号分隔。</p>
+        <p id="kai-font-status" class="help" aria-live="polite"></p>
       </section>
       <section class="card">
         <h2>替换字符</h2>
@@ -42,7 +56,8 @@
         <div class="section-heading"><h2>实时预览</h2><button id="compare" type="button" class="quiet" aria-pressed="false">查看原字形</button></div>
         <div id="preview" class="preview">
           <p class="preview-sans">中文 “引号” ‘单引号’…… — · • ※ § † ‡</p>
-          <p class="preview-serif">English “quotes” ‘apostrophe’ … — · • § † ‡</p>
+          <p class="preview-serif">宋体中文与English“引号”‘单引号’…… — · • § † ‡</p>
+          <p class="preview-kai">楷体中文与English“引号”及数字2026。</p>
           <p class="preview-mono">Code “quotes” … — ABC 0123456789</p>
         </div>
         <details id="range-details"><summary>查看字符与 Unicode 范围</summary><div class="details-body"><p id="selected-characters"></p><code id="range"></code></div></details>

@@ -123,3 +123,52 @@ test("变量引用支持中文、CSS 转义、嵌套回退、注释及大小写�
   assert.deepEqual([...S.variableReferences('v\\61 r(--\\5b57 \\4f53 )')], ["--字体"]);
   assert.deepEqual([...S.variableReferences('"var(--fake)" /* var(--other) */ var(--real)')], ["--real"]);
 });
+test("字体列表保留引号内逗号，按输入顺序去重并生成独立本机字体引用", () => {
+  assert.deepEqual([...S.fontNames('Arial， "A,B", Arial, "Times New Roman"\nCourier New')], ["Arial", "A,B", "Times New Roman", "Courier New"]);
+  assert.deepEqual([...S.fontNames(String.raw`"A\22 B", "A\2c B"`)], ['A"B', "A,B"]);
+  assert.deepEqual([...S.chineseFontFamilies('PingFang UI SC, Custom Font, PingFang SC')], ["PingFang UI SC", "Custom Font", "PingFang SC"]);
+  assert.equal(S.chineseFamilies('"Microsoft YaHei", Arial', { cjkFont: '"A,B", Custom Font' }), '"SF Pro Text", "A,B", "Custom Font", Arial');
+  const css = S.fontCSS({ font: 'Missing Font, "A,B", Courier New' });
+  assert.ok(css.indexOf('local("Missing Font")') < css.indexOf('local("A,B")'));
+  assert.ok(css.indexOf('local("A,B")') < css.indexOf('local("Courier New")'));
+  assert.deepEqual([...S.punctuationFaces({ font: 'Arial, PingFang UI SC' })].map(x => [x.family, x.weight]), [["Shared Punctuation Font", "normal"], ["Shared Punctuation Font 2", "100 900"]]);
+  const modified = S.prepend('Arial', { cjkMode: "off", font: 'Courier New, Arial' });
+  assert.equal(modified, '"Shared Punctuation Font", "Shared Punctuation Font 2", Arial');
+  assert.equal(S.prepend(modified, { cjkMode: "off", font: 'Courier New, Arial' }), modified);
+});
+test("宋体与楷体独立选择替换，默认关闭，关闭黑体时仍处理变量回退", () => {
+  assert.equal(S.normalize({}).replaceSong, false);
+  assert.equal(S.normalize({}).replaceKai, false);
+  const settings = { cjkMode: "off", replaceSong: true, songFont: "Song Custom, SimSun", replaceKai: true, kaiFont: "Kai Custom, KaiTi" };
+  assert.equal(S.hasFonts({ ...settings, groups: [] }), true);
+  assert.equal(S.chineseFamilies('Arial, SimSun, KaiTi, FangSong, serif', settings), 'Arial,"Song Custom", "SimSun","Kai Custom", "KaiTi", FangSong, serif');
+  assert.equal(S.chineseFamilies('var(--song, var(--missing, "宋体")), serif', settings), 'var(--song, var(--missing,"Song Custom", "SimSun")), serif');
+  assert.equal(S.chineseFamilies('"思源宋体", "楷体", "Songti TC", "Kaiti TC"', { ...settings, replaceKai: false }), '"思源宋体", "楷体", "Songti TC", "Kaiti TC"');
+  assert.equal(S.chineseFamilies('generic(kai), serif', settings), '"Kai Custom", "KaiTi", serif');
+  assert.equal(S.chineseFamilies('"SF Pro Text", SimSun', settings), '"SF Pro Text","Song Custom", "SimSun"');
+  assert.equal(S.chineseFamilies('KaiTi', { ...settings, kaiFont: '"SF Pro Text", Kai Custom' }), '"SF Pro Text", "Kai Custom"');
+  assert.equal(S.chineseFamilies('Arial, serif', settings), 'Arial, serif');
+  assert.equal(S.hasFonts({ groups: [], cjkMode: "off", replaceSong: false, replaceKai: false }), false);
+});
+test("宋体开关只匹配宋体与 SimSun，其他宋体名称保留原列表及变量回退", () => {
+  for (const cjkMode of ["off", "replace"]) {
+    const settings = { cjkMode, replaceSong: true, songFont: "Song Custom" };
+    for (const family of ['"宋体"', "SimSun", "simsun", String.raw`"\5b8b \4f53 "`]) {
+      assert.equal(S.chineseFamilies(`Arial, ${family}, serif`, settings), 'Arial,"Song Custom", serif');
+    }
+    for (const family of ["NSimSun", "STSong", "Songti SC", "新宋体", "华文宋体", "宋体-简", "Noto Serif SC", "Noto Serif CJK SC", "Source Han Serif SC", "思源宋体", "Songti TC"]) {
+      const value = `Arial, "${family}", sans-serif`;
+      assert.equal(S.chineseFamilies(value, settings), value, family);
+      const fallback = `var(--font, var(--backup, "${family}")), serif`;
+      assert.equal(S.chineseFamilies(fallback, settings), fallback, family);
+    }
+  }
+});
+test("站点关闭中文替换时同步停用宋体与楷体，独立标点字体列表仍生效", () => {
+  const configured = { replaceSong: true, replaceKai: true, siteRules: [{ domain: "example.com", cjkMode: "off", font: "Courier New, Arial" }] };
+  const effective = S.effective(configured, "https://example.com");
+  assert.equal(effective.replaceSong, false);
+  assert.equal(effective.replaceKai, false);
+  assert.equal(effective.font, "Courier New, Arial");
+  assert.equal(S.effective(configured, "https://other.example").replaceSong, true);
+});

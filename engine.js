@@ -1,6 +1,6 @@
 (() => {
   "use strict";
-  const { CHANNEL, FAMILY, prepend, hasFonts, cssString, unicodeRange, normalize } = SPF;
+  const { CHANNEL, prepend, hasFonts, cssString, normalize } = SPF;
   const setProperty = CSSStyleDeclaration.prototype.setProperty;
   const removeProperty = CSSStyleDeclaration.prototype.removeProperty;
   const insertRule = CSSStyleSheet.prototype.insertRule;
@@ -84,7 +84,7 @@
     if (variableSources.has(style)) variableSources.get(style).signature = style.cssText;
   }
   function trackVariables(style, owner) {
-    if (config.cjkMode === "off") return;
+    if (!SPF.hasBodyFonts(config)) return;
     for (const [name, saved] of variableSnapshots.get(style) || []) {
       if (style.getPropertyValue(name) === saved.modified) saved.priority = style.getPropertyPriority(name);
     }
@@ -106,7 +106,7 @@
   }
   function updateVariables() {
     variableTimer = 0;
-    if (!active || config.cjkMode === "off") return;
+    if (!active || !SPF.hasBodyFonts(config)) return;
     const references = new Set();
     const graph = new Map();
     const rootInline = document.documentElement?.style;
@@ -140,7 +140,9 @@
       dependents.get(next).add(name);
     }
     for (const [style, source] of variableSources) for (const name of source.variables) {
-      if (references.has(name) && !overriddenAtRoot(style, name) && SPF.hasChineseNonSans(style.getPropertyValue(name))) nonSans.add(name);
+      const current = style.getPropertyValue(name), saved = variableSnapshots.get(style)?.get(name);
+      const original = saved?.modified === current ? saved.value : current;
+      if (references.has(name) && !overriddenAtRoot(style, name) && SPF.hasChineseNonSans(original)) nonSans.add(name);
     }
     const nonSansQueue = [...nonSans];
     for (let i = 0; i < nonSansQueue.length; i++) for (const name of dependents.get(nonSansQueue[i]) || []) {
@@ -554,16 +556,15 @@
   }
   function configure(settings) {
     const next = normalize(settings);
-    const signature = JSON.stringify([next.enabled, next.font, next.groups, next.extra, next.cjkMode, next.cjkFont, next.cjkTargets]);
+    const signature = JSON.stringify([next.enabled, next.font, next.groups, next.extra, next.cjkMode, next.cjkFont, next.cjkTargets, next.replaceSong, next.songFont, next.replaceKai, next.kaiFont]);
     if (config?.signature === signature) return;
     stop();
     config = { ...next, signature };
     active = next.enabled && hasFonts(next);
     if (active) {
       // FontFace 与 @font-face 使用相同的字符范围机制，注册后也覆盖 Shadow DOM。
-      for (const [family, source, range] of [[FAMILY, next.font, unicodeRange(next)]]) {
-        if (!range) continue;
-        const face = new FontFace(family, `local(${cssString(source)})`, { unicodeRange: range, display: "swap", weight: /^PingFang UI (?:SC|TC|HK|MO)$/i.test(source) ? "100 900" : "normal" });
+      for (const { family, source, range, weight } of SPF.punctuationFaces(next)) {
+        const face = new FontFace(family, SPF.localFontSources(source), { unicodeRange: range, display: "swap", weight });
         registeredFonts.push(face); document.fonts.add(face);
         face.load().catch(() => {});
       }
@@ -578,13 +579,13 @@
   // CSSOM 的写入只在相关声明或样式表变化时处理；浏览器状态选择器继续原生生效。
   CSSStyleDeclaration.prototype.setProperty = function (name, value, priority) {
     const result = setProperty.apply(this, arguments);
-    if (!writing && (typeof name !== "string" || /^(?:font|font-family)$/i.test(name) || (active && config.cjkMode !== "off" && name.startsWith("--")))) patchStyle(this);
+    if (!writing && (typeof name !== "string" || /^(?:font|font-family)$/i.test(name) || (active && SPF.hasBodyFonts(config) && name.startsWith("--")))) patchStyle(this);
     return result;
   };
   CSSStyleDeclaration.prototype.removeProperty = function (name) {
     const result = removeProperty.apply(this, arguments);
     if (!writing && (typeof name === "string" ? /^(?:font|font-family)$/i.test(name) : snapshots.get(this)?.modified !== this.getPropertyValue("font-family"))) snapshots.delete(this);
-    if (!writing && active && config.cjkMode !== "off" && (typeof name !== "string" || /^(?:font|font-family)$/i.test(name) || name.startsWith("--"))) trackVariables(this, null);
+    if (!writing && active && SPF.hasBodyFonts(config) && (typeof name !== "string" || /^(?:font|font-family)$/i.test(name) || name.startsWith("--"))) trackVariables(this, null);
     return result;
   };
   for (const name of ["font", "fontFamily", "cssText"]) {
