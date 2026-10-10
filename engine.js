@@ -18,6 +18,7 @@
   let variableTimer = 0;
   let trackedVariables = new Set();
   let nonSansVariables = new Set();
+  let serifVariables = new Set();
   const roots = new Map();
   const detachedRoots = new Set();
   const rootReferences = new WeakMap();
@@ -42,7 +43,7 @@
     finally { writing = false; }
   }
   function appendAllowed(value) {
-    return !nonSansVariables.size || !value.includes("--") || ![...SPF.variableReferences(value)].some(name => nonSansVariables.has(name));
+    return !(nonSansVariables.size || serifVariables.size) || !value.includes("--") || ![...SPF.variableReferences(value)].some(name => nonSansVariables.has(name) || serifVariables.has(name));
   }
   function patchStyle(style, owner = null, refreshVariables = false) {
     if (!active || writing || !style || style.parentRule?.type === CSSRule.FONT_FACE_RULE) return;
@@ -69,11 +70,12 @@
       return;
     }
     const value = owned ? saved.value : current;
-    const modified = prepend(value, config, appendAllowed(value));
-    if (modified === current) { if (modified === value) snapshots.delete(style); return; }
+    const serifDependent = config.replaceSerif && serifVariables.size > 0 && value.includes("--") && [...SPF.variableReferences(value)].some(name => serifVariables.has(name));
+    const modified = prepend(value, config, appendAllowed(value), serifDependent);
+    if (modified === current || owned && modified === saved.proposed) { if (modified === value) snapshots.delete(style); return; }
     const priority = owned ? saved.priority : style.getPropertyPriority("font-family");
     if (modified === value) snapshots.delete(style);
-    else snapshots.set(style, { value, priority, modified, owner: owner || saved?.owner });
+    else snapshots.set(style, { value, priority, modified, proposed: modified, owner: owner || saved?.owner });
     if (owner instanceof Element) inlineStyles.set(owner, style);
     const sheet = style.parentRule?.parentStyleSheet;
     if (sheet) {
@@ -81,6 +83,8 @@
       sheetStyles.get(sheet).add(style);
     }
     write(style, modified, priority);
+    // CSSOM 会规范化逗号间距与引号，按实际序列化结果识别本扩展的声明。
+    if (snapshots.has(style)) snapshots.get(style).modified = style.getPropertyValue("font-family");
     if (variableSources.has(style)) variableSources.get(style).signature = style.cssText;
   }
   function trackVariables(style, owner) {
@@ -135,6 +139,7 @@
     // 字体变量有宋体、楷体等取值时，沿依赖图传播“跳过追加”。
     const dependents = new Map();
     const nonSans = new Set();
+    const serif = new Set();
     for (const name of references) for (const next of graph.get(name) || []) {
       if (!dependents.has(next)) dependents.set(next, new Set());
       dependents.get(next).add(name);
@@ -143,12 +148,18 @@
       const current = style.getPropertyValue(name), saved = variableSnapshots.get(style)?.get(name);
       const original = saved?.modified === current ? saved.value : current;
       if (references.has(name) && !overriddenAtRoot(style, name) && SPF.hasChineseNonSans(original)) nonSans.add(name);
+      if (config.replaceSerif && references.has(name) && !overriddenAtRoot(style, name) && SPF.hasSerif(original)) serif.add(name);
     }
     const nonSansQueue = [...nonSans];
     for (let i = 0; i < nonSansQueue.length; i++) for (const name of dependents.get(nonSansQueue[i]) || []) {
       if (!nonSans.has(name)) { nonSans.add(name); nonSansQueue.push(name); }
     }
     nonSansVariables = nonSans;
+    const serifQueue = [...serif];
+    for (let i = 0; i < serifQueue.length; i++) for (const name of dependents.get(serifQueue[i]) || []) {
+      if (!serif.has(name)) { serif.add(name); serifQueue.push(name); }
+    }
+    serifVariables = serif;
     for (const [style, source] of variableSources) {
       for (const [name, saved] of variableSnapshots.get(style) || []) if (!references.has(name)) {
         if (style.getPropertyValue(name) === saved.modified) {
@@ -550,20 +561,21 @@
     variableSources.clear(); variableSnapshots.clear();
     trackedVariables = new Set();
     nonSansVariables = new Set();
+    serifVariables = new Set();
     for (const node of [...clones.keys()]) restoreClone(node);
     for (const font of registeredFonts) document.fonts.delete(font);
     registeredFonts.length = 0;
   }
   function configure(settings) {
     const next = normalize(settings);
-    const signature = JSON.stringify([next.enabled, next.font, next.groups, next.extra, next.cjkMode, next.cjkFont, next.cjkTargets, next.replaceSong, next.songFont, next.replaceKai, next.kaiFont]);
+    const signature = JSON.stringify([next.enabled, next.font, next.groups, next.extra, next.cjkMode, next.cjkFont, next.cjkTargets, next.replaceSong, next.songFont, next.replaceKai, next.kaiFont, next.replaceSerif, next.serifChinese, next.serifWestern, next.serifShared]);
     if (config?.signature === signature) return;
     stop();
     config = { ...next, signature };
     active = next.enabled && hasFonts(next);
     if (active) {
       // FontFace 与 @font-face 使用相同的字符范围机制，注册后也覆盖 Shadow DOM。
-      for (const { family, source, range, weight } of SPF.punctuationFaces(next)) {
+      for (const { family, source, range, weight } of SPF.fontFaces(next)) {
         const face = new FontFace(family, SPF.localFontSources(source), { unicodeRange: range, display: "swap", weight });
         registeredFonts.push(face); document.fonts.add(face);
         face.load().catch(() => {});

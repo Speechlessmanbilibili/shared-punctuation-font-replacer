@@ -3,14 +3,14 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>共用标点字体替换</title>
+  <title>中西文字体替换</title>
   <link rel="stylesheet" href="options.css">
   <script src="shared.js" defer></script>
   <script src="options.js" defer></script>
 </head>
 <body>
   <main>
-    <header><div class="mark" aria-hidden="true">“</div><div><h1>共用标点字体替换</h1><p>统一标点字形，调整常见中文正文字体。</p></div></header>
+    <header><div class="mark" aria-hidden="true">“</div><div><h1>中西文字体替换</h1><p>统一共用标点字形，配置中文正文与serif中西文字体。</p></div></header>
     <form id="settings">
       <section class="card">
         <div class="section-heading"><h2>标点字体</h2><label class="toggle"><input type="checkbox" id="enabled" checked><span>全局开启</span></label></div>
@@ -46,6 +46,20 @@
         <p id="kai-font-status" class="help" aria-live="polite"></p>
       </section>
       <section class="card">
+        <div class="section-heading"><h2>serif/宋体中西文字体组合</h2><label class="toggle"><input type="checkbox" id="replace-serif"><span>启用</span></label></div>
+        <p class="help serif-intro">将网站字体列表中的serif与宋体（SimSun）原位替换为中西文组合，前面的字体继续优先。与“宋体替换”互斥，启用其中一项会关闭另一项。两个板块均支持多个本机字体，用英文或中文逗号分隔。</p>
+        <div class="serif-fields">
+          <div><label for="serif-chinese">中文字体列表</label><input id="serif-chinese" autocomplete="off" spellcheck="false" value="Songti SC, SimSun" placeholder="例如：Songti SC, SimSun" maxlength="4000"><p id="serif-chinese-status" class="help" aria-live="polite"></p></div>
+          <div><label for="serif-western">西文字体列表</label><input id="serif-western" autocomplete="off" spellcheck="false" value="Times New Roman" placeholder="例如：Times New Roman, Georgia" maxlength="4000"><p id="serif-western-status" class="help" aria-live="polite"></p></div>
+        </div>
+        <p class="help">中西文共用字符使用：</p>
+        <div class="mode-options serif-shared">
+          <label><input type="radio" name="serif-shared" value="chinese" checked>中文字体</label>
+          <label><input type="radio" name="serif-shared" value="western">西文字体</label>
+        </div>
+        <p class="help">弯引号、省略号、破折号、间隔号、参考符号等默认使用中文字体。本功能中的共用字符按此选项取字形。</p>
+      </section>
+      <section class="card">
         <h2>替换字符</h2>
         <div id="groups" class="groups"></div>
         <label for="extra">额外字符</label>
@@ -58,6 +72,7 @@
           <p class="preview-sans">中文 “引号” ‘单引号’…… — · • ※ § † ‡</p>
           <p class="preview-serif">宋体中文与English“引号”‘单引号’…… — · • § † ‡</p>
           <p class="preview-kai">楷体中文与English“引号”及数字2026。</p>
+          <p class="preview-generic-serif">serif组合：中文与English2026“引号”……—·※。</p>
           <p class="preview-mono">Code “quotes” … — ABC 0123456789</p>
         </div>
         <details id="range-details"><summary>查看字符与 Unicode 范围</summary><div class="details-body"><p id="selected-characters"></p><code id="range"></code></div></details>

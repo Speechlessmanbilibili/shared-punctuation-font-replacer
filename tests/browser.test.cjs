@@ -411,4 +411,72 @@ test("真实设置页提示方正新书宋的完整名称，并用所填字体�
     assert.ok((await fonts(page, ".preview-serif")).some(font => font.family === "FZNewShuSong-Z10" && font.glyphs > 0));
   } finally { await page.close(); }
 });
+async function withSerifPage(name, html, run, headers) {
+  const worker = context.serviceWorkers()[0];
+  const saved = await worker.evaluate(async () => (await chrome.storage.local.get("settings")).settings);
+  try {
+    await worker.evaluate(() => chrome.storage.local.set({ settings: { enabled: false } }));
+    const references = '<p id=ref-cn style="font-family:SimSun">中文</p><p id=ref-west style="font-family:Courier New">ABC2026</p><p id=ref-shared style="font-family:SimSun">“”</p><p id=ref-west-shared style="font-family:Courier New">“”</p><p id=ref-prior style="font-family:Arial">ABC2026</p>';
+    const page = await pageFor(name, html + references, headers);
+    const expected = {};
+    for (const id of ["cn", "west", "shared", "west-shared", "prior"]) expected[id] = await fonts(page, "#ref-" + id);
+    await worker.evaluate(() => chrome.storage.local.set({ settings: { enabled: true, font: "Arial", groups: ["quotes"], cjkMode: "replace", siteRules: [], replaceSerif: true, serifChinese: "Missing Serif Font, SimSun", serifWestern: "Missing Serif Font, Courier New", serifShared: "chinese" } }));
+    await page.waitForFunction(() => [...document.fonts].some(face => SPF.familyName(face.family) === "mixed serif chinese 2" && face.status === "loaded"));
+    await page.evaluate(() => document.fonts.ready);
+    await run(page, expected, worker);
+  } finally { await worker.evaluate(settings => chrome.storage.local.set({ settings }), saved); }
+}
+test("真实 MV3 的 serif 与宋体组合分配中西文字形，共用字符可切换且保留前置字体", async () => {
+  await withSerifPage("mixed-serif", '<style>#t{font:italic 700 32px/2 serif!important}#prior{font-family:Arial,serif}#song{font-family:"宋体"}#quoted{font-family:"serif"}</style><div id=t><span id=cn>中文</span><span id=west>ABC2026</span><span id=shared>“”</span></div><div id=prior>ABC2026</div><p id=song>中文</p><p id=quoted>ABC2026</p>', async (page, expected, worker) => {
+    for (const id of ["cn", "west", "shared", "prior"]) assert.deepEqual(await fonts(page, "#" + id), expected[id], id);
+    assert.deepEqual(await fonts(page, "#song"), expected.cn);
+    assert.deepEqual(await page.locator("#t").evaluate(node => ({ size: getComputedStyle(node).fontSize, line: getComputedStyle(node).lineHeight, weight: getComputedStyle(node).fontWeight, style: getComputedStyle(node).fontStyle })), { size: "32px", line: "64px", weight: "700", style: "italic" });
+    assert.equal(await page.evaluate(() => document.styleSheets[0].cssRules[0].style.getPropertyPriority("font-family")), "important");
+    assert.ok(!(await page.locator("#t").evaluate(node => getComputedStyle(node).fontFamily)).includes("Shared Punctuation Font"));
+    assert.ok(!(await page.locator("#quoted").evaluate(node => getComputedStyle(node).fontFamily)).includes("Mixed Serif"));
+    await worker.evaluate(async () => { const { settings } = await chrome.storage.local.get("settings"); await chrome.storage.local.set({ settings: { ...settings, serifShared: "western" } }); });
+    await page.waitForFunction(() => [...document.fonts].some(face => SPF.familyName(face.family) === "mixed serif western 2" && face.status === "loaded" && face.unicodeRange.includes("U+0-2E7F")));
+    assert.deepEqual(await fonts(page, "#shared"), expected["west-shared"]);
+    assert.deepEqual(await fonts(page, "#cn"), expected.cn);
+    assert.deepEqual(await fonts(page, "#west"), expected.west);
+  });
+});
+test("中文字体变量、嵌套 serif 回退、CSSOM 改写与互斥切换恢复最终字体", async () => {
+  await withSerifPage("mixed-serif-vars", '<style>:root{--字体:serif;--chain:var(--字体);--layout:4px}#t{font-family:var(--chain)!important}#fallback{font-family:var(--missing,var(--other,SimSun))}</style><div id=t><span id=cn>中文</span><span id=west>ABC2026</span><span id=shared>“”</span></div><p id=fallback>中文</p>', async (page, expected, worker) => {
+    await page.waitForFunction(() => getComputedStyle(document.getElementById("t")).fontFamily.includes("Mixed Serif Chinese"));
+    assert.ok(!(await page.locator("#t").evaluate(node => getComputedStyle(node).fontFamily)).includes("SF Pro Text"));
+    assert.deepEqual(await fonts(page, "#cn"), expected.cn);
+    assert.deepEqual(await fonts(page, "#west"), expected.west);
+    assert.deepEqual(await fonts(page, "#shared"), expected.shared);
+    assert.deepEqual(await fonts(page, "#fallback"), expected.cn);
+    assert.equal(await page.evaluate(() => document.styleSheets[0].cssRules[0].style.getPropertyValue("--layout")), "4px");
+    await page.evaluate(() => document.documentElement.style.setProperty("--字体", "Arial"));
+    await page.waitForFunction(() => getComputedStyle(document.getElementById("t")).fontFamily.startsWith('"Shared Punctuation Font"'));
+    assert.deepEqual(await fonts(page, "#west"), expected.prior);
+    await page.evaluate(() => document.documentElement.style.setProperty("--字体", '"宋体"', "important"));
+    await page.waitForFunction(() => getComputedStyle(document.getElementById("t")).fontFamily.startsWith('"Mixed Serif Chinese"'));
+    assert.deepEqual(await fonts(page, "#shared"), expected.shared);
+    await page.evaluate(() => document.styleSheets[0].cssRules[1].style.setProperty("font-family", "Arial, serif", "important"));
+    assert.deepEqual(await fonts(page, "#west"), expected.prior);
+    await worker.evaluate(async () => { const { settings } = await chrome.storage.local.get("settings"); await chrome.storage.local.set({ settings: { ...settings, replaceSerif: false, replaceSong: true, songFont: "KaiTi" } }); });
+    await page.waitForFunction(() => document.documentElement.style.getPropertyValue("--字体") === '"宋体"');
+    await worker.evaluate(async () => { const { settings } = await chrome.storage.local.get("settings"); await chrome.storage.local.set({ settings: { ...settings, enabled: false } }); });
+    await page.waitForFunction(() => document.styleSheets[0].cssRules[1].style.fontFamily === "Arial, serif");
+    assert.equal(await page.evaluate(() => document.styleSheets[0].cssRules[1].style.getPropertyPriority("font-family")), "important");
+    assert.equal(await page.evaluate(() => document.documentElement.style.getPropertyPriority("--字体")), "important");
+    assert.equal(await page.evaluate(() => [...document.fonts].filter(face => SPF.familyName(face.family).startsWith("mixed serif")).length), 0);
+  });
+});
+test("serif 组合在跨域 CSS、严格 CSP、Shadow DOM 和子框架中实际绘制", async () => {
+  crossRoutes.set("/serif.css", { type: "text/css", text: "#cross{font-family:serif}" });
+  await withSerifPage("mixed-serif-contexts", `<link rel=stylesheet href="${crossOrigin}/serif.css"><div id=cross><span id=cn>中文</span><span id=west>ABC2026</span></div><div id=host></div><iframe srcdoc='<p id=frame-cn style="font-family:serif">中文</p><p id=frame-west style="font-family:serif">ABC2026</p>'></iframe>`, async (page, expected) => {
+    await page.waitForFunction(() => getComputedStyle(document.getElementById("cross")).fontFamily.includes("Mixed Serif"));
+    assert.deepEqual(await fonts(page, "#cn"), expected.cn); assert.deepEqual(await fonts(page, "#west"), expected.west);
+    await page.evaluate(() => { const shadow = document.getElementById("host").attachShadow({ mode: "closed" }); const sheet = new CSSStyleSheet(); sheet.replaceSync("p{font-family:serif}"); shadow.adoptedStyleSheets = [sheet]; shadow.innerHTML = "<p id=shadow-cn>中文</p><p id=shadow-west>ABC2026</p>"; });
+    assert.deepEqual(await fonts(page, "#shadow-cn"), expected.cn); assert.deepEqual(await fonts(page, "#shadow-west"), expected.west);
+    const frame = page.frames().find(frame => frame !== page.mainFrame());
+    await frame.waitForFunction(() => [...document.fonts].some(face => SPF.familyName(face.family) === "mixed serif chinese 2" && face.status === "loaded"));
+    assert.deepEqual(await fonts(page, "#frame-cn"), expected.cn); assert.deepEqual(await fonts(page, "#frame-west"), expected.west);
+  }, { "content-security-policy": "script-src 'none'; style-src 'unsafe-inline' http:; font-src 'self'" });
+});
 test("页面没有扩展运行错误", () => { assert.deepEqual(errors, []); });

@@ -146,3 +146,44 @@ test("字体目录返回前改用可用字体时，旧检测结果不会覆盖�
     assert.equal(await page.locator("#song-font-status").evaluate(node => node.classList.contains("error")), false);
   } finally { await page.close(); }
 });
+
+test("serif 字体板块、共用字符选项、预览、保存及关闭校验保持一致", async () => {
+  const page = await fixture();
+  try {
+    await initialize(page);
+    assert.equal(await page.title(), "中西文字体替换");
+    assert.equal(await page.locator("#replace-serif").isChecked(), false);
+    assert.equal(await page.locator("#serif-chinese").isDisabled(), true);
+    await page.locator("#replace-serif").check();
+    await page.locator("#serif-chinese").fill("Missing Font, SimSun");
+    await page.locator("#serif-western").fill("Missing Font，Courier New");
+    await page.locator('input[name="serif-shared"][value="western"]').check();
+    await page.waitForFunction(() => ["serif-chinese-status", "serif-western-status"].every(id => document.getElementById(id).textContent === "已找到本机字体。"));
+    const family = await page.locator(".preview-generic-serif").evaluate(node => node.style.fontFamily);
+    assert.ok(family.startsWith('"Mixed Serif Chinese"'));
+    assert.ok(!family.includes("Shared Punctuation Font"));
+    await page.getByRole("button", { name: "查看原字形" }).click();
+    assert.equal(await page.locator(".preview-generic-serif").evaluate(node => node.style.fontFamily), "serif");
+    await page.getByRole("button", { name: "查看替换字形" }).click();
+    await page.getByRole("button", { name: "保存设置" }).click();
+    const value = await page.evaluate(() => saves[0].value.settings);
+    assert.equal(value.replaceSerif, true); assert.equal(value.serifShared, "western");
+    assert.equal(value.serifChinese, "Missing Font, SimSun"); assert.equal(value.serifWestern, "Missing Font，Courier New");
+    await page.evaluate(() => saves[0].resolve());
+    await page.locator("#serif-western").fill(",，");
+    await page.getByRole("button", { name: "保存设置" }).click();
+    assert.equal(await page.evaluate(() => saves.length), 1);
+    await page.locator("#replace-serif").uncheck();
+    await page.getByRole("button", { name: "保存设置" }).click();
+    assert.equal(await page.evaluate(() => saves.length), 2);
+    await page.evaluate(() => saves[1].resolve());
+    assert.equal(await page.locator("#serif-western-status").textContent(), "");
+    await page.locator("#replace-serif").check();
+    await page.locator("#replace-song").check();
+    assert.equal(await page.locator("#replace-serif").isChecked(), false);
+    assert.equal(await page.locator("#serif-chinese").isDisabled(), true);
+    await page.locator("#replace-serif").check();
+    assert.equal(await page.locator("#replace-song").isChecked(), false);
+    assert.equal(await page.locator("#song-font").isDisabled(), true);
+  } finally { await page.close(); }
+});

@@ -40,6 +40,8 @@
       cjkMode: document.querySelector('input[name="cjk-mode"]:checked').value, cjkFont: $("cjk-font").value, cjkTargets: $("cjk-targets").value.split(/\r?\n/),
       replaceSong: $("replace-song").checked, songFont: $("song-font").value,
       replaceKai: $("replace-kai").checked, kaiFont: $("kai-font").value,
+      replaceSerif: $("replace-serif").checked, serifChinese: $("serif-chinese").value, serifWestern: $("serif-western").value,
+      serifShared: document.querySelector('input[name="serif-shared"]:checked').value,
       siteRules: [...$("rules").children].map(x => ({ domain: x.querySelector(".domain").value, action: x.querySelector("[data-action]:checked").value, font: x.querySelector(".site-font").value, cjkMode: x.querySelector("[data-cjk]:checked").value }))
     });
   }
@@ -55,17 +57,19 @@
     $("cjk-font").disabled = settings.cjkMode === "off";
     $("song-font").disabled = !settings.replaceSong;
     $("kai-font").disabled = !settings.replaceKai;
+    for (const input of [$("serif-chinese"), $("serif-western"), ...document.querySelectorAll('input[name="serif-shared"]')]) input.disabled = !settings.replaceSerif;
     $("font-status").textContent = range ? "" : "未选择标点字符。";
     $("font-status").classList.remove("error");
-    for (const id of ["cjk-font-status", "song-font-status", "kai-font-status"]) { $(id).textContent = ""; $(id).classList.remove("error"); }
+    for (const id of ["cjk-font-status", "song-font-status", "kai-font-status", "serif-chinese-status", "serif-western-status"]) { $(id).textContent = ""; $(id).classList.remove("error"); }
     for (const item of previewStyles) item.node.style.fontFamily = comparing ? item.family : SPF.prepend(item.family, settings);
     const loads = [];
-    for (const { family, source, range: faceRange, weight } of SPF.punctuationFaces(settings)) {
+    const serifLoads = { chinese: [], western: [] };
+    for (const { family, source, side, range: faceRange, weight } of SPF.fontFaces(settings)) {
       const font = new FontFace(family, SPF.localFontSources(source), { unicodeRange: faceRange, weight });
       previewFonts.push(font); document.fonts.add(font);
-      loads.push(font.load());
+      (side ? serifLoads[side] : loads).push(font.load());
     }
-    async function check(statusId, load, list, body = false) {
+    async function check(statusId, load, list, body = false, glyphs = "标点") {
       try {
         await load();
         if (serial === previewSerial) { $(statusId).textContent = "已找到本机字体。"; $(statusId).classList.remove("error"); }
@@ -76,13 +80,16 @@
         const exact = catalog.some(name => names.includes(name.toLowerCase()));
         if (body && exact) { $(statusId).textContent = "已找到本机字体。"; $(statusId).classList.remove("error"); return; }
         const suggestions = [...new Set(catalog.filter(name => names.some(wanted => name.toLowerCase().startsWith(wanted))))].slice(0, 4);
-        $(statusId).textContent = exact ? "已找到本机字体，但标点字形加载失败。" : suggestions.length
+        $(statusId).textContent = exact ? "已找到本机字体，但" + glyphs + "字形加载失败。" : suggestions.length
           ? "未找到填写的字体名称。本机已安装的相近字体：" + suggestions.join("、") + "。"
           : "未找到列表中的本机字体，请检查名称或先安装字体。";
         $(statusId).classList.add("error");
       }
     }
     const checks = range ? [check("font-status", () => Promise.any(loads), settings.font)] : [];
+    if (settings.replaceSerif) for (const [side, list, glyphs] of [["chinese", settings.serifChinese, "中文"], ["western", settings.serifWestern, "西文"]]) {
+      checks.push(check("serif-" + side + "-status", () => Promise.any(serifLoads[side]), list, false, glyphs));
+    }
     for (const [enabled, list, id] of [[settings.cjkMode !== "off", settings.cjkFont, "cjk-font-status"], [settings.replaceSong, settings.songFont, "song-font-status"], [settings.replaceKai, settings.kaiFont, "kai-font-status"]]) {
       if (enabled) checks.push(check(id, () => {
         const sources = SPF.chineseFontFamilies(list).map(SPF.localFontSources).join(", ");
@@ -122,7 +129,11 @@
     $("empty-rules").hidden = Boolean($("rules").children.length);
     status(saving ? "正在保存……" : JSON.stringify(read()) === saved ? "已保存" : "有未保存的更改");
   }
-  $("settings").addEventListener("input", event => { changed(); if (!event.target.closest("#rules")) preview(); });
+  $("settings").addEventListener("input", event => {
+    if (event.target.checked && event.target.id === "replace-serif") $("replace-song").checked = false;
+    if (event.target.checked && event.target.id === "replace-song") $("replace-serif").checked = false;
+    changed(); if (!event.target.closest("#rules")) preview();
+  });
   $("add-rule").addEventListener("click", () => { addRule().focus(); changed(); });
   $("compare").addEventListener("click", () => {
     comparing = !comparing;
@@ -138,7 +149,7 @@
       input.setCustomValidity(SPF.parseDomain(input.value) ? "" : "请填写有效的域名或域名与端口。");
       if (!input.reportValidity()) { input.focus(); status("请修正站点域名。", true); return; }
     }
-    for (const input of [...["font", "cjk-font", "song-font", "kai-font"].map($), ...document.querySelectorAll(".site-font")]) {
+    for (const input of [...["font", "cjk-font", "song-font", "kai-font", "serif-chinese", "serif-western"].map($), ...document.querySelectorAll(".site-font")]) {
       if (input.disabled || (input.classList.contains("site-font") && !input.value.trim())) continue;
       input.setCustomValidity(SPF.fontNames(input.value).length ? "" : "请至少填写一个本机字体名称。");
       if (!input.reportValidity()) { input.focus(); status("请填写有效的字体列表。", true); return; }
@@ -150,13 +161,15 @@
     finally { saveButton.disabled = false; form.setAttribute("aria-busy", "false"); }
   });
   $("rules").addEventListener("input", event => { if (event.target.classList.contains("domain")) event.target.setCustomValidity(""); });
-  form.addEventListener("input", event => { if (event.target.matches("#font, #cjk-font, #song-font, #kai-font, .site-font")) event.target.setCustomValidity(""); });
+  form.addEventListener("input", event => { if (event.target.matches("#font, #cjk-font, #song-font, #kai-font, #serif-chinese, #serif-western, .site-font")) event.target.setCustomValidity(""); });
   chrome.storage.local.get("settings").then(({ settings }) => {
     const value = SPF.normalize(settings);
     $("enabled").checked = value.enabled; $("font").value = value.font; $("extra").value = value.extra;
     document.querySelector(`input[name="cjk-mode"][value="${value.cjkMode}"]`).checked = true; $("cjk-font").value = value.cjkFont; $("cjk-targets").value = value.cjkTargets.join("\n");
     $("replace-song").checked = value.replaceSong; $("song-font").value = value.songFont;
     $("replace-kai").checked = value.replaceKai; $("kai-font").value = value.kaiFont;
+    $("replace-serif").checked = value.replaceSerif; $("serif-chinese").value = value.serifChinese; $("serif-western").value = value.serifWestern;
+    document.querySelector(`input[name="serif-shared"][value="${value.serifShared}"]`).checked = true;
     for (const input of document.querySelectorAll("[data-group]")) input.checked = value.groups.includes(input.value);
     for (const rule of value.siteRules) addRule(rule);
     saved = JSON.stringify(read()); loaded = true; form.inert = false; saveButton.disabled = false; form.setAttribute("aria-busy", "false"); changed(); preview();

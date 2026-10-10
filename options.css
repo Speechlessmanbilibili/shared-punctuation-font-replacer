@@ -44,6 +44,11 @@ button:hover { background: color-mix(in srgb, var(--accent) 7%, var(--surface));
 .preview-sans { font-family: Arial, "Microsoft YaHei", sans-serif; }
 .preview-serif { font-family: "Times New Roman", SimSun, serif; }
 .preview-kai { font-family: KaiTi, serif; }
+.preview-generic-serif { font-family: serif; }
+.serif-intro { margin: 0 0 20px; }
+.serif-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.serif-fields > div { min-width: 0; }
+.serif-shared { margin: 12px 0 0; }
 .preview-mono { font-family: "Courier New", monospace; font-size: 19px; }
 summary { cursor: pointer; font-size: 13px; color: var(--muted); padding: 20px 0 0; }
 .details-body { overflow: hidden; font-size: 13px; }
@@ -62,6 +67,7 @@ footer { position: sticky; bottom: 14px; display: flex; justify-content: space-b
   main { margin: 26px auto; padding: 0 14px 28px; }
   .card { padding: 20px; }
   .groups { grid-template-columns: 1fr; }
+  .serif-fields { grid-template-columns: 1fr; }
   header { gap: 14px; }
   h1 { font-size: 24px; }
   .mark { width: 58px; height: 58px; font-size: 58px; flex-shrink: 0; }

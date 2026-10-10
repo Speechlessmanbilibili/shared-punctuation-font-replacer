@@ -172,3 +172,43 @@ test("站点关闭中文替换时同步停用宋体与楷体，独立标点字�
   assert.equal(effective.font, "Courier New, Arial");
   assert.equal(S.effective(configured, "https://other.example").replaceSong, true);
 });
+
+test("serif 原位组合保留前置字体和显式字体名称，嵌套回退及重复处理保持一致", () => {
+  const settings = { replaceSerif: true, serifChinese: "Missing Chinese, SimSun", serifWestern: "Missing Western, Times New Roman" };
+  const group = '"Mixed Serif Chinese", "Mixed Serif Chinese 2", "Mixed Serif Western", "Mixed Serif Western 2", serif';
+  assert.equal(S.normalize({}).replaceSerif, false);
+  assert.equal(S.normalize({}).serifShared, "chinese");
+  assert.equal(S.prepend("Arial, serif", settings), "Arial," + group);
+  assert.equal(S.prepend("serif", settings), group);
+  assert.equal(S.prepend("SimSun", settings), group.replace(/serif$/, "SimSun"));
+  assert.equal(S.prepend('"宋体"', settings), group.replace(/serif$/, '"宋体"'));
+  assert.equal(S.normalize({ replaceSong: true, replaceSerif: true }).replaceSong, false);
+  assert.equal(S.prepend(S.prepend("Arial, serif", settings), settings), "Arial," + group);
+  assert.equal(S.prepend(String.raw`s\65 rif`, settings).includes('"Mixed Serif Chinese"'), true);
+  for (const value of ['"serif"', "ui-serif", "sans-serif", "monospace", '"Times New Roman"', '"Songti SC"', '"新宋体"', '"思源宋体"']) {
+    assert.equal(S.hasSerif(value), false, value);
+    assert.equal(S.prepend(value, settings).includes("Mixed Serif"), false, value);
+  }
+  const nested = S.prepend("var(--a, var(--b, serif))", settings);
+  assert.ok(nested.includes('var(--b,' + group + ")"));
+  assert.ok(!nested.includes("Shared Punctuation Font"));
+  assert.equal(S.hasSerif('var(--a, "serif")'), false);
+  assert.equal(S.prepend("var(--a)", settings, false, true), "var(--a)");
+  assert.equal(S.hasFonts({ groups: [], cjkMode: "off", replaceSerif: true }), true);
+  assert.equal(S.effective({ ...settings, siteRules: [{ domain: "example.com", cjkMode: "off" }] }, "https://example.com").replaceSerif, false);
+});
+
+test("serif 中西文范围不重叠，汉字扩展、全角标点、西文与共用字符正确分配", () => {
+  const intervals = text => text.split(",").map(item => item.slice(2).split("-").map(x => parseInt(x, 16))).map(([start, end]) => [start, end ?? start]);
+  const contains = (ranges, char) => ranges.some(([start, end]) => char.codePointAt(0) >= start && char.codePointAt(0) <= end);
+  for (const side of ["chinese", "western"]) {
+    const ranges = S.serifRanges(side), cn = intervals(ranges.chinese), west = intervals(ranges.western);
+    for (const [start, end] of cn) assert.ok(!west.some(([otherStart, otherEnd]) => start <= otherEnd && end >= otherStart));
+    for (const char of "中文。，㐀𠀀𱍐") { assert.ok(contains(cn, char), char); assert.ok(!contains(west, char), char); }
+    for (const char of "ABC2026éΩЖ") { assert.ok(contains(west, char), char); assert.ok(!contains(cn, char), char); }
+    for (const char of "“”…—·※§†©±") assert.equal(contains(cn, char), side === "chinese", char);
+    for (const [start, end] of [...cn, ...west]) assert.ok(end < 0xD800 || start > 0xDFFF);
+  }
+  const faces = S.serifFaces({ replaceSerif: true, serifChinese: "PingFang UI SC, SimSun", serifWestern: "Arial" });
+  assert.deepEqual([...faces].map(x => [x.side, x.weight]), [["chinese", "100 900"], ["chinese", "normal"], ["western", "normal"]]);
+});

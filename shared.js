@@ -1,6 +1,8 @@
 (() => {
   "use strict";
   const FAMILY = "Shared Punctuation Font";
+  const SERIF_CHINESE = "Mixed Serif Chinese";
+  const SERIF_WESTERN = "Mixed Serif Western";
   const CHINESE_FONTS = Object.freeze([
     "Microsoft YaHei", "Microsoft YaHei UI", "微软雅黑",
     "PingFang SC", "PingFang UI SC", "苹方-简",
@@ -76,10 +78,14 @@
       cjkMode: value.cjkMode === "off" ? "off" : "replace",
       cjkFont: typeof value.cjkFont === "string" && value.cjkFont.trim() ? value.cjkFont.trim().slice(0, 4000) : "PingFang UI SC",
       cjkTargets: targets,
-      replaceSong: value.replaceSong === true,
+      replaceSong: value.replaceSong === true && value.replaceSerif !== true,
       songFont: typeof value.songFont === "string" && value.songFont.trim() ? value.songFont.trim().slice(0, 4000) : "Songti SC",
       replaceKai: value.replaceKai === true,
       kaiFont: typeof value.kaiFont === "string" && value.kaiFont.trim() ? value.kaiFont.trim().slice(0, 4000) : "Kaiti SC",
+      replaceSerif: value.replaceSerif === true,
+      serifChinese: typeof value.serifChinese === "string" && value.serifChinese.trim() ? value.serifChinese.trim().slice(0, 4000) : "Songti SC, SimSun",
+      serifWestern: typeof value.serifWestern === "string" && value.serifWestern.trim() ? value.serifWestern.trim().slice(0, 4000) : "Times New Roman",
+      serifShared: value.serifShared === "western" ? "western" : "chinese",
       siteRules: Array.isArray(value.siteRules) ? value.siteRules.filter(x => x && typeof x === "object").slice(0, 500).map(x => ({
         domain: typeof x.domain === "string" ? x.domain.trim() : "",
         action: ["on", "off"].includes(x.action) ? x.action : "inherit",
@@ -115,7 +121,8 @@
     }
     return { ...settings, enabled: best?.action === "off" ? false : best?.action === "on" ? true : settings.enabled, font: best?.font || settings.font, cjkMode: best && best.cjkMode !== "inherit" ? best.cjkMode : settings.cjkMode,
       replaceSong: best?.cjkMode === "off" ? false : settings.replaceSong,
-      replaceKai: best?.cjkMode === "off" ? false : settings.replaceKai };
+      replaceKai: best?.cjkMode === "off" ? false : settings.replaceKai,
+      replaceSerif: best?.cjkMode === "off" ? false : settings.replaceSerif };
   }
   function characters(value) {
     const settings = normalize(value);
@@ -142,7 +149,7 @@
     return [font, font + " Regular"].map(name => `local(${cssString(name)})`).join(", ");
   }
   function fontCSS(value) {
-    return punctuationFaces(value).map(face => `@font-face { font-family: ${cssString(face.family)}; src: ${localFontSources(face.source)}; unicode-range: ${face.range}; font-weight: ${face.weight}; font-display: swap; }`).join("\n");
+    return fontFaces(value).map(face => `@font-face { font-family: ${cssString(face.family)}; src: ${localFontSources(face.source)}; unicode-range: ${face.range}; font-weight: ${face.weight}; font-display: swap; }`).join("\n");
   }
   const prefix = cssString(FAMILY) + ", ";
   function familyList(value, input = false) {
@@ -162,7 +169,7 @@
     result.push(value.slice(start));
     return result;
   }
-  function hasBodyFonts(settings) { return settings.cjkMode !== "off" || settings.replaceSong === true || settings.replaceKai === true; }
+  function hasBodyFonts(settings) { return settings.cjkMode !== "off" || settings.replaceSong === true || settings.replaceKai === true || settings.replaceSerif === true; }
   function hasFonts(value) { const settings = normalize(value); return Boolean(unicodeRange(settings)) || hasBodyFonts(settings); }
   function decodeCSS(value) {
     return value.replace(/\\(?:([\da-f]{1,6})(?:\r\n|[\t\n\f\r ])?|([^\r\n\f]))/gi, (_, hex, char) => {
@@ -199,6 +206,65 @@
     return names.map((source, i) => ({ family: FAMILY + (i ? " " + (i + 1) : ""), source, range,
       weight: /^PingFang UI (?:SC|TC|HK|MO)$/i.test(source) ? "100 900" : "normal" }));
   }
+  const serifRangeCache = new Map();
+  function serifRanges(shared = "chinese") {
+    const key = shared === "western" ? "western" : "chinese";
+    if (serifRangeCache.has(key)) return serifRangeCache.get(key);
+    // 汉字、注音、部首、笔画、中文标点与全角形式；补充平面覆盖扩展汉字。
+    const chinese = [[0x2E80, 0x303F], [0x3100, 0x312F], [0x31A0, 0x9FFF],
+      [0xF900, 0xFAFF], [0xFE10, 0xFE1F], [0xFE30, 0xFE4F], [0xFF00, 0xFF60],
+      [0xFFE0, 0xFFE6], [0x16FE0, 0x16FFF], [0x20000, 0x3FFFF]];
+    if (key === "chinese") for (const char of GROUPS.filter(group => group.id !== "ascii").map(group => group.chars).join("")) {
+      const code = char.codePointAt(0); chinese.push([code, code]);
+    }
+    chinese.sort((a, b) => a[0] - b[0]);
+    const merged = [];
+    for (const [start, end] of chinese) {
+      const last = merged.at(-1);
+      if (last && start <= last[1] + 1) last[1] = Math.max(last[1], end);
+      else merged.push([start, end]);
+    }
+    // 西文使用中文范围的补集，排除代理码位，两个板块没有重叠范围。
+    const western = [];
+    let cursor = 0;
+    for (const [start, end] of [...merged, [0xD800, 0xDFFF]].sort((a, b) => a[0] - b[0])) {
+      if (cursor < start) western.push([cursor, start - 1]);
+      cursor = end + 1;
+    }
+    if (cursor <= 0x10FFFF) western.push([cursor, 0x10FFFF]);
+    const text = ranges => ranges.map(([start, end]) => "U+" + start.toString(16).toUpperCase() + (end === start ? "" : "-" + end.toString(16).toUpperCase())).join(",");
+    const result = Object.freeze({ chinese: text(merged), western: text(western) });
+    serifRangeCache.set(key, result);
+    return result;
+  }
+  function serifFaces(value) {
+    const settings = normalize(value);
+    if (!settings.replaceSerif) return [];
+    const ranges = serifRanges(settings.serifShared);
+    // 每个后备字体单独注册，避免中文变量字重改变西文字体的字重匹配。
+    return [["chinese", SERIF_CHINESE, settings.serifChinese], ["western", SERIF_WESTERN, settings.serifWestern]].flatMap(([side, family, list]) =>
+      fontNames(list).map((source, i) => ({ family: family + (i ? " " + (i + 1) : ""), source, side, range: ranges[side],
+        weight: /^PingFang UI (?:SC|TC|HK|MO)$/i.test(source) ? "100 900" : "normal" })));
+  }
+  function fontFaces(value) { return [...punctuationFaces(value), ...serifFaces(value)]; }
+  function isGenericSerif(value) {
+    const part = value.replace(/\/\*[\s\S]*?\*\//g, " ").trim();
+    return part[0] !== '"' && part[0] !== "'" && familyName(part) === "serif";
+  }
+  function isSerifAlias(value) { return /^mixed serif (?:chinese|western)(?: (?:[2-9]|[12]\d|3[0-2]))?$/.test(familyName(value) || ""); }
+  function isSerifTarget(value) { return isGenericSerif(value) || SONG_FONTS.has(familyName(value)); }
+  function hasSerif(value) {
+    const pending = [value];
+    for (let i = 0; i < pending.length; i++) for (const part of familyList(pending[i])) {
+      if (isSerifTarget(part) || isSerifAlias(part)) return true;
+      const opening = part.indexOf("(");
+      if (opening >= 0 && decodeCSS(part.slice(0, opening).trim()).toLowerCase() === "var" && part.trimEnd().endsWith(")")) {
+        const fallback = familyList(part.slice(opening + 1, part.lastIndexOf(")"))).slice(1).join(",");
+        if (fallback) pending.push(fallback);
+      }
+    }
+    return false;
+  }
   function hasChineseNonSans(value) {
     const pending = [value];
     for (let i = 0; i < pending.length; i++) for (const part of familyList(pending[i])) {
@@ -230,10 +296,15 @@
     const font = chineseFontFamilies(settings.cjkFont).map(cssString).join(", ");
     const group = selected === "sf pro text" ? font : cssString("SF Pro Text") + ", " + font;
     const typedGroup = list => chineseFontFamilies(list).map(cssString).join(", ");
-    const nonSans = hasChineseNonSans(value);
-    let found = false;
+    const nonSans = hasChineseNonSans(value) || settings.replaceSerif && hasSerif(value);
+    const alreadySerif = parts.some(isSerifAlias);
+    let found = alreadySerif;
     const result = parts.map((part, i) => {
       const name = familyName(part);
+      if (settings.replaceSerif && isSerifTarget(part)) {
+        found = true;
+        return alreadySerif ? part : [...serifFaces(settings).map(face => cssString(face.family)), part.trim()].join(", ");
+      }
       if ((settings.replaceSong && SONG_FONTS.has(name)) || (settings.replaceKai && KAI_FONTS.has(name))) {
         found = true;
         return typedGroup(SONG_FONTS.has(name) ? settings.songFont : settings.kaiFont);
@@ -304,14 +375,15 @@
     }
     return result;
   }
-  function prepend(value, options, append = true) {
+  function prepend(value, options, append = true, serifDependent = false) {
     const family = value.trim();
     if (!family || /^(?:inherit|initial|unset|revert|revert-layer)$/i.test(family) || family.startsWith(prefix)) return value;
     if (!options) return prefix + value;
     const settings = normalize(options);
     const faces = punctuationFaces(settings);
-    const head = faces.length ? faces.map(face => cssString(face.family)).join(", ") + ", " : "";
+    // serif 组合在原位置提供共用字符，避免全局标点前缀抢先覆盖它。
+    const head = faces.length && !(settings.replaceSerif && (serifDependent || hasSerif(value))) ? faces.map(face => cssString(face.family)).join(", ") + ", " : "";
     return head + chineseFamilies(value, settings, append, !append);
   }
-  globalThis.SPF = Object.freeze({ FAMILY, CHINESE_FONTS, SYSTEM_FONTS, DEFAULT_TARGETS, CHANNEL, GROUPS, normalize, parseDomain, effective, characters, unicodeRange, cssString, localFontSources, fontCSS, prepend, prefix, familyList, familyName, fontNames, punctuationFaces, hasChineseNonSans, chineseFontFamilies, chineseFamilies, variableReferences, hasBodyFonts, hasFonts });
+  globalThis.SPF = Object.freeze({ FAMILY, CHINESE_FONTS, SYSTEM_FONTS, DEFAULT_TARGETS, CHANNEL, GROUPS, normalize, parseDomain, effective, characters, unicodeRange, cssString, localFontSources, fontCSS, prepend, prefix, familyList, familyName, fontNames, punctuationFaces, serifRanges, serifFaces, fontFaces, hasSerif, hasChineseNonSans, chineseFontFamilies, chineseFamilies, variableReferences, hasBodyFonts, hasFonts });
 })();
