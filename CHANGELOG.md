@@ -2,9 +2,9 @@
 
 根据 Git 提交、版本标签及 GitHub Release 记录整理。版本标题链接到对应 Release，日期采用首次发布时的北京时间；同版本安装包的后续更新另行标注日期。
 
-## [v1.2.0](https://github.com/Speechlessmanbilibili/shared-punctuation-font-replacer/releases/tag/v1.2.0)（2026-10-10）
+## [v1.2.0](https://github.com/Speechlessmanbilibili/chinese-western-font-replacer/releases/tag/v1.2.0)（2026-10-10）
 
-- 将扩展改名为“中西文字体替换”，同步设置页及工具栏名称，沿用原扩展身份和配置。
+- 将扩展改名为“中西文字体替换”，仓库改名为 `chinese-western-font-replacer`，同步设置页、工具栏及安装包名称，更新相关链接，沿用原扩展身份和配置。
 - 添加默认关闭的中西文字体组合功能，原位替换通用 `serif` 及 `宋体`/`SimSun`，分别设置中文与西文字体列表。
 - 通过 `unicode-range` 分配中西文字符，各字体列表按填写顺序回退；保留前置字体及原字体后备。
 - 为共用标点提供中文/西文字体选项，默认使用中文字体，设置页加入独立混排预览与本机字体检测。
@@ -12,7 +12,7 @@
 - 处理字体变量、多层引用、嵌套回退及动态声明，切换或关闭后恢复网站最新字体与 `!important` 优先级。
 - 按 CSSOM 实际序列化结果保存替换快照，修复逗号间距及引号规范化后关闭扩展残留组合字体的问题。
 
-## [v1.1.0](https://github.com/Speechlessmanbilibili/shared-punctuation-font-replacer/releases/tag/v1.1.0)（2026-10-08）
+## [v1.1.0](https://github.com/Speechlessmanbilibili/chinese-western-font-replacer/releases/tag/v1.1.0)（2026-10-08）
 
 - 添加独立的宋体与楷体替换开关，分别设置目标字体列表，默认关闭，按填写顺序原位替换。
 - 支持在标点、中文正文及本站标点字体输入框中填写多个字体，按填写顺序回退，识别英文和中文逗号以及带引号的字体名。
@@ -22,11 +22,11 @@
 - 添加宋体、楷体预览与字体列表检测，站点关闭中文替换时同时停用三类中文字体替换。
 - 结合浏览器字体目录检测正文家族名称，名称未命中时提示相近的已安装完整名称，分别显示标点字形加载结果。
 
-## [v1.0.3](https://github.com/Speechlessmanbilibili/shared-punctuation-font-replacer/releases/tag/v1.0.3)（2026-10-07）
+## [v1.0.3](https://github.com/Speechlessmanbilibili/chinese-western-font-replacer/releases/tag/v1.0.3)（2026-10-07）
 
 - 在正文替换字体链的 `PingFang UI SC` 后补充 `PingFang SC`，同步更新设置页预览和本机字体检测。
 
-## [v1.0.2](https://github.com/Speechlessmanbilibili/shared-punctuation-font-replacer/releases/tag/v1.0.2)（2026-10-06）
+## [v1.0.2](https://github.com/Speechlessmanbilibili/chinese-western-font-replacer/releases/tag/v1.0.2)（2026-10-06）
 
 - 在样式资源移除后还原字体声明和变量，重新挂入时恢复替换；同步清理导入样式表的依赖。
 - 在开放及闭合 Shadow DOM 宿主重新挂入后恢复观察，保留共享样式表。
@@ -45,7 +45,7 @@
 - 未选择任何标点字符时，同步清除旧字体提示与预览字体。
 - 拒绝无效通配符站点规则，修复带冒号或星号的 URL 路径解析。
 
-## [v1.0.1](https://github.com/Speechlessmanbilibili/shared-punctuation-font-replacer/releases/tag/v1.0.1)（2026-10-06）
+## [v1.0.1](https://github.com/Speechlessmanbilibili/chinese-western-font-replacer/releases/tag/v1.0.1)（2026-10-06）
 
 - 提前向字体处理入口传递站点配置，在后台默认字体查询完成前处理网站字体声明。
 - 注册标点专用字体后立即预加载，缩短首次绘制标点的等待。
@@ -53,7 +53,7 @@
 - 缓存启动配置与浏览器默认字体查询，减少重复读取和样式注入。
 - 根元素补充样式独立更新，快速切换设置后保持最终字体状态。
 
-## [v1.0.0](https://github.com/Speechlessmanbilibili/shared-punctuation-font-replacer/releases/tag/v1.0.0)（2026-10-06）
+## [v1.0.0](https://github.com/Speechlessmanbilibili/chinese-western-font-replacer/releases/tag/v1.0.0)（2026-10-06）
 
 - 为中西文共用标点指定本机字体，保留网站正文的原字体列表。
 - 提供字符组选择、额外字符输入和原字形对照预览。

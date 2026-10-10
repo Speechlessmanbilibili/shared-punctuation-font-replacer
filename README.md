@@ -4,7 +4,7 @@
 
 ## 使用
 
-从 [GitHub Release](https://github.com/Speechlessmanbilibili/shared-punctuation-font-replacer/releases/latest) 下载带版本号的 ZIP，拖入 Chrome/Edge 扩展管理页，打开设置，填写已安装的本机字体名称并保存。默认字体为 `PingFang UI SC`。固定扩展 ID 为 `leodnciablfoggcacioldiippnfdonmg`，更新包覆盖原扩展并沿用已有设置。
+从 [GitHub Release](https://github.com/Speechlessmanbilibili/chinese-western-font-replacer/releases/latest) 下载带版本号的 ZIP，拖入 Chrome/Edge 扩展管理页，打开设置，填写已安装的本机字体名称并保存。默认字体为 `PingFang UI SC`。固定扩展 ID 为 `leodnciablfoggcacioldiippnfdonmg`，更新包覆盖原扩展并沿用已有设置。
 
 标点、黑体、宋体、楷体、中西文组合及本站标点字体输入框均支持多个字体，用英文或中文逗号分隔，例如 `PingFang UI SC, PingFang SC`。浏览器按填写顺序选择可用字体，并在缺字时继续尝试后备项。字体名称本身含逗号时，用 CSS 引号包住，例如 `"A,B", Arial`。
 
