@@ -15,7 +15,7 @@ $taskRuntime = [System.IO.File]::ReadAllText((Join-Path $PSScriptRoot 'shared.js
 $taskNames = @('manifest.json', 'background.js', 'shared.js', 'main-runtime.js', 'bridge.js', 'options.html', 'options.css', 'options.js', 'README.md', 'CHANGELOG.md', 'PRIVACY.md', 'LICENSE')
 $taskOutput = [System.IO.Path]::GetFullPath($OutputDirectory)
 New-Item -ItemType Directory -Path $taskOutput -Force | Out-Null
-$taskZip = Join-Path $taskOutput "shared-punctuation-font-replacer-v$taskVersion.zip"
+$taskZip = Join-Path $taskOutput "chinese-western-font-replacer-v$taskVersion.zip"
 Add-Type -AssemblyName System.IO.Compression
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 $taskStream = [System.IO.File]::Open($taskZip, [System.IO.FileMode]::Create)

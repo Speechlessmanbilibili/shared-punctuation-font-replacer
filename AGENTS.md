@@ -22,7 +22,7 @@
 - 设置页缓存浏览器字体目录，用于正文家族检测和相近完整名称提示；标点字体以字形加载结果判断。异步检测更新提示前核对当前预览代次。
 - 系统无衬线及 Apple 文本样式名称同样原位替换为 `SF Pro Text` 与目标中文字体；明确包含中文宋体、楷体等时保留系统后备项。默认名单与历史完整集合迁移集中维护在 `shared.js`。
 - 每次修改后运行真实 Chromium 回归，验证实际绘制字体、动态样式与设置页；重建版本 ZIP，并校验文件头、根目录、版本及文件内容。
-- 在本目录运行 `powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\build-release.ps1`；安装包自动复制到运行时获取的系统下载目录。
+- 在本目录运行 `powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\build-release.ps1`；安装包命名为 `chinese-western-font-replacer-v<VERSION>.zip`，自动复制到运行时获取的系统下载目录，GitHub Release 使用相同文件名。
 - ZIP 条目使用 `/`，扩展文件放在根目录；PowerShell 5.1 脚本使用 UTF-8 带 BOM。
 - `CHANGELOG.md` 记录版本功能，日期使用北京时间。发布说明只写具体功能修改。
 - Release 说明草稿保存为 `.md` 文件，按 Markdown 编写，并通过 `gh` 的 `--notes-file` 发布；函数、属性、关键字、文件名和协议等代码内容使用行内代码格式，如 `@import`、`var()`、`about:blank`。
